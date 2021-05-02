@@ -1,0 +1,4 @@
+<div style={{"display:flex;flex-direction:column;justify-content:center;align-items:center;height:"+window.innerHeight+"px;font-family:Verdana, Sans Serif;"}}>
+    <div style="font-size:100px;font-weight:bold;">404</div>
+    <div style="position:relative;font-weight:bold;font-size:36px;top:-40px;">Not Found</div>
+</div>

@@ -1,0 +1,3670 @@
+<style>
+    @font-face {
+        font-family : 'Source Code Pro Negrito';
+        src : url('/fonts/ttf/SourceCodePro-Bold.ttf') format('truetype');
+    }
+    @font-face {
+        font-family : 'Input Mono Bold';
+        src : url('/fonts/ttf/InputMono-Bold.ttf') format('truetype');
+    }
+    @font-face {
+        font-family : 'Fira Code SemiBold';
+        src : url('/fonts/ttf/FiraCode-SemiBold.ttf') format('truetype');
+    }
+</style>
+<div id="mode" style="font:white;background-color:red;"></div>
+<script>
+    this.file_security_pointer = {};
+</script>
+<Component id="IDB" src="/IDB.superml" sp={{this.file_security_pointer}}></Component>
+<style>
+    body {
+        margin:0px;
+    }
+</style>
+<Component id="loader_backend"></Component>
+<Component id="loader"></Component>
+<div class="mx-2">
+    
+    <div>
+        <Component id="ui"></Component>
+        <script>
+            // should rename ui to loader_os, maybe later when thinking about customization of interface.
+        </script>
+    </div>
+    <div>
+        <Component id="loader_frontend">
+            <div></div>
+        </Component>
+
+        <script>
+            // here the stack of projects, after system
+        </script>
+    </div>
+
+
+    <script>
+        // bellow the context of iteration on current top level
+    </script>
+    <div style="display:flex;">
+        <div style="flex:1;"></div>
+        <div style="flex:30;">
+            <div>
+                <Component id="file_navigator"></Component>
+            </div>
+            <div id="terminal" class="mt-2">
+                <div>
+                    <Component id="error"></Component>
+                </div>
+                <div style="border:solid 1px #000;padding-left:20px;background-color:black;color:white;display:flex;" class="mb-1">
+                    <div>
+                        <Component id="msg"></Component>
+                    </div>
+                    <div style="flex:1;"></div>
+                    <div id="editorPanel">
+                        <button id="btnSave" class="btn btn-primary my-1">Save</button>
+                        <button id="btnSaveAs" class="btn btn-primary mx-1 my-1">Save as</button>
+                        <Component id="btnUploadEditor">
+                            <button class="btn btn-primary m-1" style="position:relative;">
+                                Upload
+                                <input type="file" id="btnUpload" value="restore" style="position:absolute;left:0px;top:0px;width:74px;height:40px;opacity:0.1;"/>
+                            </button>
+                        </Component>
+                    </div>
+                </div>
+                <div id="mark" style="display:none;border:solid 1px #000;width:10px;height:10px;"></div>
+                <div id="editorContainer" style="border:solid 1px #000;width:800px;opacity:0.8;">
+                    <div id="editor" style="position:relative;width:800px;height:780px;"></div>
+                </div>
+            </div>
+        </div>
+        <div style="flex:1;"></div>
+    </div>
+    <div>
+        <Component id="players"></Component>
+        <script>
+            // after filemanager register "file types" associated with project call stack
+            // live level
+        </script>
+    </div>
+</div>
+
+<script>
+
+    //alert(this.file_security_pointer.a);
+
+    function genId(schema,size) {
+        if(!schema) {
+            schema = "";
+        }
+        var code = 'xxxxxxxxxxxxxxxx';
+        if(size) {
+            var sb = [];
+            for(var x = 0; x < size;x++) {
+                sb.push("x");
+            }
+            code = sb.join("");
+        }
+        return function() {
+            return schema+(code).replace(/[x]/g, function(c) {
+                var r = Math.random() * 16 | 0;
+                if( c == 'x' ) {
+                    return r.toString(16);
+                } else {
+                    return c;
+                }
+            })
+        };
+    }
+    
+    const AssetSpec = {
+        name : "root",
+        releases : [
+        {
+            version : 1,
+            schema : {
+                file_raw : {
+                    blob : {},
+                    _meta : {
+                        index : []
+                    }
+                },
+                file_meta_cache : {
+                    name : {},
+                    fileid : {},
+                    needUpdate : {},
+                    _meta : {
+                        index : ["name"]
+                    }
+                },
+                file_meta : {
+                    name : {unique:true},
+                    fileid : {},
+                    date : {},
+                    comments : {},
+                    type : {},
+                    _meta : {
+                        index : ["name","date"]
+                    }
+                    
+                    //  name
+                    //  date index is reserved for copying comments to date(sort) then using browser index to find something -> rename date for custom_sort
+                    //  fileid=inode id is the file_raw, 0 if is link
+                    //  hub={ [{path:full name path in scope of this fs,instructions:{}}] } // may have own table, when follow pass account, maybe there is a firewall blocking account
+                    //  comments = ( creation time, last access time, last write time, delete time, ... ) // may have own table
+                    //  emulated_mode : { unix : , windows : , mac : , .. other : } // emulation level // may have own table (write only what is not in other fields )
+                    //  type : is this system attributes -> may refer to system types in future.
+                    //  account : id // first is last last is first? need research, may be specified in type
+                    
+                    //    linux : 
+                    //        mode: 0o777, type: "dir", size: 0, ino: 0, mtimeMs: Date.now()
+                    // https://ext4.wiki.kernel.org/index.php/Ext4_Disk_Layout
+                    
+                    
+                    //    windows
+                    //        // reference number
+                    //        DWORD    dwFileAttributes;
+                    //        // parent id
+                    //        FILETIME ftCreationTime;
+                    //        FILETIME ftLastAccessTime;
+                    //        FILETIME ftLastWriteTime;
+                    //        // last usn
+                    //        // owner id
+                    //        // sec id
+                    //        // storage reserve id
+                    //        DWORD    dwVolumeSerialNumber;
+                    //        DWORD    nFileSizeHigh;
+                    //        DWORD    nFileSizeLow;
+                    //        DWORD    nNumberOfLinks;
+                    //        DWORD    nFileIndexHigh;
+                    //        DWORD    nFileIndexLow;
+                    //        // streams
+                    
+                },
+                account : {
+                    name : {},
+                    email : {},
+                    phone : {},
+                    password_type : {},
+                    password_data : {}, //blobid-> not tracked file (cant read without a security pointer),
+                    _meta : {
+                        index : ["name"]
+                    }
+                },
+                groups : {
+                    id : {},
+                    name : {},
+                    users : {},
+                    _meta : {
+                        index : []
+                    }
+                },
+                file_ownership : {
+                    fileid : {},
+                    owners : {},
+                    groups : {},
+                    _meta : {
+                        index : ["fileid"]
+                    }
+                }
+            }
+        }]
+    };
+    var _dbPass0 = 
+        "e8b423d410ba4f451c96dba7e741c9de8b6064e743bbe7237c5f9c8602f8e7de98eaf2799666ebca0706b94c0d07346a70f1898bc8fa78e5bbc6b056a99789553c94700025dca"+
+        +parseInt(Math.random()*1000000000).toString() +parseInt(Math.random()*1000000000).toString() + parseInt(Math.random()*1000000000).toString() +
+        +parseInt(Math.random()*1000000000).toString() +parseInt(Math.random()*1000000000).toString() +parseInt(Math.random()*1000000000).toString() +
+        +parseInt(Math.random()*1000000000).toString() +parseInt(Math.random()*1000000000).toString() +parseInt(Math.random()*1000000000).toString() +
+        "24d2df98f2705029456eb4d199f498e101f0d6f18bc5fc8f0cae3d03599421f1748637a";
+
+    var _dbPass1 = "MANUAL-5bf880685227df86b02b85ec844cbbe8b09899e925ea62f36a45535a9b124aac2211681ef832d0b2ca877b5c7c5cd49143f7";
+    // await instance.from("http://...."); nao pode ensinar o usuario a fazer codigo entao pra usar ja eh pre requisito.
+
+    var touchFile = false;
+    if(touchFile) {
+        // fork for (docs & publishing)
+        // se tem que copiar manualmentee logo precisa mexer no arquivo, 
+        // indicando que ha uma possibilidade maior do eventual problema ser de SO nao do navegador.
+        //_dbPass = _dbPass1;
+
+        // write json pass
+        //await mode.$.elementSetPacketAsync(`<span>MANUAL (long term perspective)</span>`);
+        
+    } else {
+        // fork for (prototype)
+        // se for pro clip o usuario nao precisa mexer nesse arquivo, mas nao prova que o usuario nao sabe js, 
+        // apenas que nao mexeu nesse arquivo para rodar a instancia em questao.
+        //_dbPass = _dbPass0;
+        //await navigator.clipboard.writeText( _dbPass );
+        //await mode.$.elementSetPacketAsync(`<span>PROTOTYPE OF RUNNING INSTANCE</span>`);
+    }
+    var root = await IDB.exports.service(AssetSpec);
+    AssetSpec.name = "alpha";
+    
+
+    
+    // first account is name:[admin,user]
+    // second and on is name:[user]
+    // must be set on group admin if need powers.
+
+    // default group : admin
+    // default group : user
+    
+
+    function newTypeRef(_type,_default) {
+        return function(v,change) {
+            var ret = null;
+            if(Object.prototype.toString.apply(_default)=="[object Function]") {
+                ret = { value : v || _default() };
+
+            } else {
+                ret = { value : v || _default };
+            }
+            ret[Symbol.toStringTag] = "[object Ref"+_type+"]";
+            ret.cb = function () {
+                if(arguments.length == 0 ) {
+                    return ret.value;
+                } else if(Object.prototype.toString.apply(arguments[0]) == "[object "+_type+"]") {
+                    if( arguments.length==1 ) {
+                        console.log("SET PROP ",arguments[0],ret.value);
+                        var b = arguments[0] != ret.value;
+                        ret.value = arguments[0];
+                        if(b && change) {
+                            console.log("SET PROP CHANGED EVT ",arguments[0]);
+                            change(arguments[0],ret);
+                        }
+                    }
+                } else {
+                    console.log("wrong type");
+                }
+            };
+            var r2 = {};
+            Object.defineProperty(r2,"value",{
+                get:()=>{
+                    return ret.value;
+                },
+                writeable:false
+            });
+            Object.defineProperty(r2,"cb",{
+                value : ret.cb,
+                writeable : false
+            });
+            return r2;
+        }    
+    }
+
+    var _types = {};
+    Object.defineProperty(_types,"Number",{
+        value : newTypeRef("Number",0), 
+        writeable:false
+    });
+    Object.defineProperty(_types,"String",{
+        value : newTypeRef("String",""), 
+        writeable:false
+    });
+    Object.defineProperty(_types,"Boolean",{
+        value : newTypeRef("Boolean",false), 
+        writeable:false
+    });
+    Object.defineProperty(_types,"Object",{
+        value : newTypeRef("Object",function() { return new Object(); }), 
+        writeable:false
+    });
+    Object.defineProperty(_types,"Array",{
+        value : newTypeRef("Array",function() { return new Array(); }), 
+        writeable:false
+    });
+    Object.defineProperty(_types,"Symbol",{
+        value : newTypeRef("Symbol", function() { return Symbol(); }), 
+        writeable:false
+    });
+    Object.defineProperty(_types,"Function",{
+        value : newTypeRef("Function",function() { return function(){}; }), 
+        writeable:false
+    });
+    Object.defineProperty(_types,"AsyncFunction",{
+        value : newTypeRef("AsyncFunction",function() { return function(){}; }), 
+        writeable:false
+    });
+
+    var ref = {};
+    var _SystemStack = [];
+
+
+    Object.defineProperty(ref,"sys",{
+        get:()=>{
+            return _SystemStack[_SystemStack.length-1];
+        },
+        writeable : false
+    });
+
+    //
+    // start migration.
+    //
+    //      storing current root.sys enable algorithms to work on calling time sys methods. (closure of the call)
+    //          instead of always top level control.
+    //      boot will get current sys
+    //      execution will get current sys
+    //      -> user.boot system : projects(current-> will call ref.sys ) files (current -> will call ref.sys) tools (current -> will call ref.sys) apps(abstract -> callstack to app)
+    //      -> user.boot project1 : label1(current-> will call ref.sys ) label2(current -> will call ref.sys) label3(fixed -> will call _SystemStack[1])
+    //      -> user.boot project1_1 : label2(current-> will call ref.sys ) label2(current -> will call ref.sys) label3(fixed -> will call _SystemStack[2])
+    //      current : rel.sys.TARGET (own interface -> protects own partition)
+    //      fixed : var sys = rel.sys; sys.TARGET (own interface -> protects own partition)
+    //      it allows stacked db to choose if its UI will get next level or use own content, like filemanager and projects uses next level; it would have a fixed behaviour even if next level is loaded. 
+    //      it allows to call functions from popped dbs. (if virtual system holds all of its level)
+    //      it allows to keep functions working the same even if is in a nested db. (if virtual system holds all of its level)
+    //
+
+    function SystemFactory(name) {
+        var sys = {};
+        return sys;
+    }
+    _SystemStack.push(SystemFactory("alpha"));
+
+    var sys = {};
+    var _events = Class.create("WithEvents");
+    var _sysEventStack = [Class.create("WithEvents")];
+
+    // >>sys.events
+    Object.defineProperty(sys,"events",{
+        get:()=>{
+            return _sysEventStack[_sysEventStack.length-1];
+        },
+        writeable : false
+    });
+
+    var clock_counter = 0;
+    var clock_array = {
+        second : 0,
+        minute : 0,
+        hour : 0,
+        day : 0,
+        week : 0,
+    };
+    Object.defineProperty(clock_array,"startDate",{
+        value : new Date(),
+        writable : false
+    });
+    Object.defineProperty(clock_array,"startMilli",{
+        value : window.performance.now(),
+        writable : false
+    });
+
+    var clock_sec = setInterval(()=>{ // loose precision
+        clock_counter += 10;
+        if(clock_counter >= 1000) {
+            _sysEventStack[0].emit("clock.second",[Object.assign({}, clock_array)]);
+            clock_counter -= 1000;
+            clock_array.second += 1;
+            if(clock_array.second % 60 == 0) {
+                clock_array.minute += 1;
+                _sysEventStack[0].emit("clock.minute",[Object.assign({}, clock_array)]);
+                if(clock_array.minute % 60 == 0) {
+                    clock_array.hour += 1;
+                    _sysEventStack[0].emit("clock.hour",[Object.assign({}, clock_array)]);
+                    if(clock_array.hour % 24 == 0) {
+                        clock_array.day += 1;
+                        _sysEventStack[0].emit("clock.day",[Object.assign({}, clock_array)]);
+                        if(clock_array.day % 7 == 0) {
+                            clock_array.week += 1;
+                            _sysEventStack[0].emit("clock.week",[Object.assign({},clock_array)]);
+                        }
+                    }
+                }
+            }
+        }
+    },10);
+    // >>sys.settings
+    sys.settings = {
+        terminal : {
+            visible : true
+        }
+    };
+    // >>sys.sector
+    sys.sector = {
+        ui,
+        msg,
+        error,
+        loader,
+        loader_backend,
+        loader_frontend,
+        file_navigator
+    };
+    // >>sys.keyboard
+    sys.keyboard = {
+        ctrl : false,
+        shift : false,
+        alt : false
+    };
+
+
+    var db = await IDB.exports.service(AssetSpec);
+    var _dbStack = [db];
+    var _dbStackName = ["alpha"];
+    var _dbStackSchema = [null];
+    var _dbSecure = [false]; // holds secure implementations of db. /interface.super
+    // default no root security, it may have in next kernels.
+    var _dbFileCache = {};
+    var _dbMin = 1;
+
+    // >>sys.types
+    Object.defineProperty(sys,"types",{
+        value : _types,
+        writeable:false
+    });
+
+    var _frontSecureCounter = 0;
+    var _frontSecureAlert = -1;
+    var _frontSecurePassword = "";
+    var _frontSecureUsed = [];
+    var _frontSecureFails = 0;
+    var _frontSecureOks = 0;
+    var _frontSecureLock = false;
+
+    // >>sys._frontSecure
+    Object.defineProperty(sys,"_frontSecure",{
+        value : sys.types.Boolean(false,function _FRONTSECURE(val,holder) {
+            if(_frontSecureLock) {
+                val = !!!val;
+                holder.value = val;
+                return;
+            }
+            if(window.localStorage.getItem("pass.tip") == null) {
+                var check = true;
+                var pass = "";
+                while(check) {
+                    pass = prompt("setup a password:");
+                    check = false;
+                    for(var x = 0; x < _frontSecureUsed.length;x++) {
+                        if(_frontSecureUsed[x] == sha1(pass+"ce465852de2afcbf4cdf")) {
+                            check = true;
+                            break;
+                        }
+                    }
+                    if(check) alert("used password, you may reset.");
+                }
+                var hash = sha1(pass+"ce465852de2afcbf4cdf");
+                window.localStorage.setItem("pass.tip",hash);
+            } else {
+                if(val === false) {
+                    var tried = prompt("password:");
+                    var check = false;
+                    for(var x = 0; x < _frontSecureUsed.length;x++) {
+                        if(_frontSecureUsed[x] == sha1(tried+"ce465852de2afcbf4cdf")) {
+                            check = true;
+                            break;
+                        }
+                    }
+                    var tip = window.localStorage.getItem("pass.tip");
+                    var hash = sha1(tried+"ce465852de2afcbf4cdf");
+                    if( hash != tip || check) {
+                        val = !!!val;
+                        holder.value = val;
+                        _frontSecureFails++;
+                        _frontSecureUsed.push(tip);
+                        window.localStorage.removeItem("pass.tip");
+                        console.error("TRIED",tried);
+                    } else {
+                        _frontSecureOks++;
+                    }
+                }
+            }
+            _frontSecureCounter++;
+            console.error(_frontSecureCounter + ":secure : " + val + ":pass("+_frontSecureOks+"):fails("+_frontSecureFails+"):\r\n" + _FRONTSECURE.toString());
+            if(_frontSecureAlert!=-1) {
+                alert(_frontSecureCounter+":secure:"+val);
+            }
+            // may hardcode hash of kernel.
+        }),
+        writeable:false
+    });
+
+
+
+    async function saveDbCache(name,value,force) {
+        if(!savingDbCache) {
+            savingDbCache = true;
+            console.log("save db cache trigger");
+            var metaId = await sys.db.file_meta_cache.findId("name",sys.dbName);
+            console.log("META ID",metaId);
+            if(metaId) {
+                console.log("SET UPDATE");
+                var meta = await sys.db.file_meta_cache.find("name",sys.dbName);
+                await sys.db.file_meta_cache.update(metaId,{
+                    name : meta.name,
+                    fileid : meta.fileid,
+                    needUpdate : true
+                });
+            }
+            var default_time = 20000;
+            if(force) default_time = 0;
+            setTimeout(async ()=>{
+                console.log("save db cache init");
+                if(name === null || name === undefined || Object.prototype.toString.apply(name) != "[object String]" || name == "" ) {
+                    throw new Error("db save cache error " + name);
+                }
+                var meta = await sys.db.file_meta_cache.find("name",name);
+                var bw = new BinaryWriter();
+                var file_ab = Binary.str2utf8ab(JSON.stringify(value));
+                bw.add(file_ab);
+                if(meta) {
+                    await sys.db.file_raw.update(meta.fileid,bw.toBlob());
+
+                    var metaId = await sys.db.file_meta_cache.findId("name",name);
+                    await sys.db.file_meta_cache.update(metaId,{
+                        name : meta.name,
+                        fileid : meta.fileid,
+                        needUpdate : false
+                    });
+                } else {
+                    var file_id = await sys.db.file_raw.add(bw.toBlob());
+                    var _meta = {
+                        name: name,
+                        fileid : file_id,
+                        needUpdate : false
+                    };
+                    var meta_id = await sys.db.file_meta_cache.add(_meta);
+                }
+                savingDbCache = false;
+                console.log(name + " saved cache db.");
+            },default_time);
+        }
+    };
+    window.addEventListener("unload",async ()=>{
+        await saveDbCache(this.dbName,_dbFileCache[this.dbName],true);
+        alert("done");
+    });
+    async function loadDbCache(name) {
+        if(name === null || name === undefined || Object.prototype.toString.apply(name) != "[object String]" || name == "" ) {
+            throw new Error("db load cache error " + name);
+        }
+        var meta = await sys.db.file_meta_cache.find("name",name);
+        if(meta) {
+            //console.error(">>meta:",meta);
+            if(meta.needUpdate) {
+                return null;
+            }
+            var blob = await sys.db.file_raw.find(meta.fileid);
+            var ret = Binary.utf8ab2str( await blob.arrayBuffer(), blob.size );
+            return JSON.parse(ret);
+        }
+        return null;
+    };
+
+
+    var _secureLock = false;
+
+    // >>sys.secureLock
+    Object.defineProperty(sys,"secureLock",{
+        set :(val)=> {
+            if(Object.prototype.toString.apply(val) == "[object Boolean]") {
+                if(!_secureLock) {
+                    _frontSecureLock = val;
+                    _secureLock = true;
+                }
+            }
+        },
+        writeable : false
+    });
+    _sysEventStack[0].on("boot.user.finish",(val)=>{
+        _frontSecureAlert = val;
+        alert(_frontSecureCounter + ":secure:" + sys._frontSecure.value); 
+    });
+    
+    var _dbPassMem = "";
+    var _dbPassLock = true;
+
+    // >>sys.db
+    Object.defineProperty(sys,"db",{
+        get:()=>{
+            //_dbPassMem = _dbPassMem != "" ? _dbPassMem : prompt("password");
+            //if(_dbPass == _dbPassMem && _dbPassLock) {
+                return _dbStack[_dbStack.length-1];
+            //} else {
+                //_dbPassLock = false;
+            //}
+            //return null;
+        },
+        writeable : false
+    });
+
+    // >>sys.dbSecure
+    Object.defineProperty(sys,"dbSecure",{
+        get:()=>{
+            return _dbSecure[_dbSecure.length-1];
+        },
+        writeable : false
+    });
+
+    // >>sys.dbName
+    Object.defineProperty(sys,"dbName",{
+        get:()=>{
+            return _dbStackName[_dbStackName.length-1];
+        },
+        writeable :false
+    });
+
+    // >>sys.pushDb
+    Object.defineProperty(sys,"pushDb",{
+        value : async function(dbName,args,options) { // containers
+            console.log("PUSH DB",dbName);
+
+            // this prevents instancing same database multiple times and load root db inside a inner db.
+            for(var x = 0; x < _dbStackName.length;x++) { 
+                if(_dbStackName[x] == dbName) {
+                    throw new Error("db '"+dbName+"' already loaded, locked scope");
+                }
+            }
+            AssetSpec.name = dbName;
+            var db = await IDB.exports.service(AssetSpec);
+            _dbStackName.push(dbName);
+            _dbStack.push(db);
+
+            await this.events.emit("file.changed");
+            // boot security check, use args to automate, otherwise use ui with no args.
+            //      if fails, popDb
+            var schema = await loader_frontend.$.elementPushPacketAsync(`
+                <Component id="control"></Component>
+            `);
+            var schema2 = await schema.$.control.elementSetPacketAsync(`
+                <Component id="boot"></Component>
+            `);
+
+            _dbStackSchema.push(schema);
+            _dbSecure.push(false);
+            _sysEventStack.push(Class.create("WithEvents"));
+            await this.ls(); // cache meta
+            
+            var backup = this.file ? this.file : "/default.js";
+            // this enforce that only defined parents are allowed to call this db. 
+            // once installed, cant change, cause will pop db before booting.
+            var parents = await this.loadText("/sys/parents.json"); 
+            if(sys._frontSecure.value && parents!=null) {
+                console.log(">>>> PARENTS",parents);
+                parents = JSON.parse(parents);
+                var check = false;
+                for(var x = 0; x < parents.length;x++) {
+                    if(_dbStackName[_dbStackName.length-2] == parents[x]) {
+                        check = true;
+                        break;
+                    }
+                }
+                if(!check) {
+                    await this.popDb();
+                    this.open(backup);
+                    throw new Error(dbName + " is not allowed to be loaded from " + _dbStackName[_dbStackName.length-1]);
+                }
+            }
+            var result = await this.boot(args,{$:schema2.$.boot});
+
+            //
+            // place a return to debug loaded database that fails on boot.super
+            // return;
+            //
+            var result_type2 = 0;
+            var result_type = Object.prototype.toString.apply(result);
+            if(result_type == "[object Boolean]") {
+                result_type2 = 1;
+                if(!result) { // this return is checked for "password boots", if it fails drop db.
+                    await this.popDb();
+                    this.open(backup);
+                    throw new Error(dbName + " has a boot error. also called inner security.");
+                }
+            } else if(result_type == "[object Array]") {
+                result_type2 = 2;
+                if(!result[0]) {
+                    await this.popDb();
+                    this.open(backup);
+                   throw new Error(dbName + " has a boot error. also called inner security.");
+                }
+            }
+            //
+            // load security interface, aka exposts this.modules and 
+            // interface is loaded to _dbSecure stack, dbSecure.can interface holds
+            // boolean to commmon funcions of sys interface, like saveText, saveBlob, loadText, loadBlob...
+            // to use:
+            // example of interface file:
+            // <script>
+            //      this.module.exports = {
+            //          can : {
+            //              saveText : false,
+            //              saveBlob : false,
+            //              loadText : false,
+            //              loadBlob : false,
+            //              open : false,
+            //              copy : false,
+            //              move : false,
+            //              delete : false,
+            //              backup : false,
+            //              restore : false,
+            //              toogleTerminal : false,
+            //              request : false,
+            //              loadSuper : false,
+            //              boot : false
+            //          }
+            //      };
+            // </ ,script>
+            //
+            var parts = dbName.split(".");
+            if( parts.length > 1 && parts[parts.length-1] == "sec") {
+                var check = await this.loadText("/interface.super");
+                if(check!=null) {
+                    var _interface = await this.loadSuper("/interface.super");
+                    _interface._boot = result;
+                    _dbSecure[_dbSecure.length-1] = _interface;
+                    await _sysEventStack[0].emit("db.push");
+                    return {
+                        bootResult : result,
+                        interface : _interface
+                    };
+                } else {
+                    await _sysEventStack[0].emit("db.push");
+                    return {
+                        bootResult : result,
+                        interface : null,
+                        ui : {
+                            control : {$:schema.$.control},
+                            boot : {$:schema2.$.boot}
+                        }
+                    }
+                }
+            } else {
+                await _sysEventStack[0].emit("db.push");
+                return {
+                    bootResult : result,
+                    ui : {
+                        control : {$:schema.$.control},
+                        boot : {$:schema2.$.boot}
+                    }
+                };
+            }
+        },
+        writeable: false
+    });
+
+    // >>sys.popDb
+    Object.defineProperty(sys,"popDb",{
+        value: async function() {
+            if(_dbStack.length>_dbMin) {
+                await saveDbCache(this.dbName,_dbFileCache[this.dbName],true);
+                var cur = _dbStackName[_dbStackName.length-1];
+                console.log("POP DB",cur);
+                await this.events.emit("db.unload",[cur]); // exit scope, make shutdown
+                _dbStack.pop();
+                _dbStackName.pop();
+                _dbSecure.pop();
+                _sysEventStack.pop();
+                var schema = _dbStackSchema.pop();
+                schema.$.control.elementsClear();
+                AssetSpec.name = _dbStackName[_dbStackName.length-1];
+                await _sysEventStack[0].emit("file.changed");
+                await _sysEventStack[0].emit("db.pop",[cur]); // exit scope, make shutdown
+                
+            } else {
+                console.log("can't pop any more db levels.");
+            }
+        },
+        writeable : false
+    });
+
+    // >>sys.makeDbProtected
+    Object.defineProperty(sys,"makeDbProtected",{
+        value : async function() {
+            _dbMin = _dbStack.length;
+        },
+        writeable : false
+    });
+
+    // >>sys.dbStack
+    Object.defineProperty(sys,"dbStack",{
+        value : function() {
+            var copy = [];
+            for(var x = 0; x < _dbStackName.length;x++) {
+                copy.push( _dbStackName[x].slice(0) );
+            }
+            return copy;
+        },
+        writeable : false
+    });
+    var savingDbCache = false;
+
+    
+    
+    // >>sys.saveText
+    Object.defineProperty(sys,"saveText",{
+        value : async function(name,value) {
+            if(sys._frontSecure.value && this.dbSecure && "can" in this.dbSecure && !this.dbSecure.can.saveText) { return; }
+            // nao protege contra programadores do backend, a nao ser que nao se possa modificar o kernel, nem intercepta-lo. dont trust backend.
+            // mas pode ser testado pra ver se esta' carregado, runtime slice, dont do the test automatically to avoid counter-code. 
+            // passwords to block only low profile. encryption to block low money.
+            if(name === null || name === undefined || Object.prototype.toString.apply(name) != "[object String]" || name == "" ) {
+                alert("name not defined (1).");
+                name = "/debug/default" + default_counter;
+                default_counter++;
+            }
+
+            var parts = name.split("/");
+            if(parts[0] == "" && parts.length>1) { // has / at first
+
+            } else if(parts[0] != "" && parts.length>1) {
+                name = "/" + name; // normalize path
+            } else if(parts.length==1 && name != "") {
+                name = "/" + name;
+            }
+            var file_backup = sys.file;
+            var meta = await sys.db.file_meta.find("name",name);
+            var bw = new BinaryWriter();
+            try {
+                var file_ab = Binary.str2utf8ab(value);
+            } catch(e) {
+                console.error("save text : ", name);
+                throw e;
+            }
+            bw.add(file_ab);
+            if(meta) {
+                await sys.db.file_raw.update(meta.fileid,bw.toBlob());
+                await _sysEventStack[0].emit("file.changed2");
+            } else {
+                var file_id = await sys.db.file_raw.add(bw.toBlob());
+                var _meta = {
+                    name: name,
+                    fileid : file_id, 
+                    type : "text",
+                    date : (new Date()).toISOString(), 
+                    comments : "{}"
+                };
+                var meta_id = await sys.db.file_meta.add(_meta);
+                _dbFileCache[sys.dbName][ name ] = _meta;
+                await msg.$.elementSetPacketAsync(`<div style="font-size:30px;">${file_backup}</div>`);
+                sys.file = file_backup;
+                await _sysEventStack[0].emit("file.changed");
+                saveDbCache(this.dbName,_dbFileCache[this.dbName]);
+            }
+            console.log(name + " saved.");
+        },
+        writeable : false
+    });
+    var default_counter = 0;
+    // >>sys.saveBlob
+    Object.defineProperty(sys,"saveBlob",{
+        value : async function(name,value) {
+            if(sys._frontSecure.value && this.dbSecure && "can" in this.dbSecure && !this.dbSecure.can.saveBlob) { return; }
+            if(name === null || name === undefined || Object.prototype.toString.apply(name) != "[object String]" || name == "" ) {
+                alert("name not defined (1).");
+                name = "/debug/default" + default_counter;
+                default_counter++;
+            }
+
+            var parts = name.split("/");
+            
+            if(parts[0] == "" && parts.length>1) { // has / at first
+
+            } else if(parts[0] != "" && parts.length>1) {
+                name = "/" + name; // normalize path
+            } else if(parts.length==1 && name != "") {
+                name = "/" + name;
+            }
+
+            var file_backup = sys.file;
+            var meta = await sys.db.file_meta.find("name",name);
+            var bw = new BinaryWriter();
+            bw.add(await value.arrayBuffer());
+            if(meta) {
+                await sys.db.file_raw.update(meta.fileid,bw.toBlob());
+                await _sysEventStack[0].emit("file.changed2");
+            } else {
+                var file_id = await sys.db.file_raw.add(bw.toBlob());
+                var _meta = {
+                    name: name,
+                    fileid : file_id, 
+                    type : "blob",
+                    date : (new Date()).toISOString(), 
+                    comments : "{}"
+                };
+                var meta_id = await sys.db.file_meta.add(_meta);
+                _dbFileCache[sys.dbName][ name ] = _meta;
+                await _sysEventStack[0].emit("file.changed");
+                await msg.$.elementSetPacketAsync(`<div style="font-size:30px;">${file_backup}</div>`);
+                sys.file = file_backup;
+                saveDbCache(this.dbName,_dbFileCache[this.dbName]);
+            }
+            console.log(name + " saved.");
+        },
+        writeable : false
+    });
+    // >>sys.loadText
+    Object.defineProperty(sys,"loadText",{
+        value : async function(name) {
+            if(sys._frontSecure.value && this.dbSecure && "can" in this.dbSecure && !this.dbSecure.can.loadText) { return; }
+            if(name === null || name === undefined || Object.prototype.toString.apply(name) != "[object String]" || name == "" ) {
+                alert("name not defined (2).");
+                name = "/debug/default" + default_counter;
+                default_counter++;
+            }
+
+            var parts = name.split("/");
+            if(parts[0] == "" && parts.length>1) { // has / at first
+
+            } else if(parts[0] != "" && parts.length>1) {
+                name = "/" + name; // normalize path
+            } else if(parts.length==1 && name != "") {
+                name = "/" + name;
+            }
+
+            var meta = await sys.db.file_meta.find("name",name);
+            if(meta) {
+                var blob = await sys.db.file_raw.find(meta.fileid);
+                var ret = Binary.utf8ab2str( await blob.arrayBuffer(), blob.size );
+                return ret;
+            }
+            console.log("not found : " + name);
+            return null;
+        },
+        writeable : false
+    });
+    // >>sys.loadBlob
+    Object.defineProperty(sys,"loadBlob",{
+        value : async function(name) {
+            if(sys._frontSecure.value && this.dbSecure && "can" in this.dbSecure && !this.dbSecure.can.loadBlob) { return; }
+            if(name === null || name === undefined || Object.prototype.toString.apply(name) != "[object String]" || name == "" ) {
+                alert("name not defined (2).");
+                name = "/debug/default" + default_counter;
+                default_counter++;
+            }
+
+            var parts = name.split("/");
+            
+            if(parts[0] == "" && parts.length>1) { // has / at first
+
+            } else if(parts[0] != "" && parts.length>1) {
+                name = "/" + name; // normalize path
+            } else if(parts.length==1 && name != "") {
+                name = "/" + name;
+            }
+            console.log(name);
+
+            var meta = await sys.db.file_meta.find("name",name);
+            if(meta && meta.type == "blob") {
+                var blob = await sys.db.file_raw.find(meta.fileid);
+                var br = new BinaryReader(blob,await blob.arrayBuffer());
+                var nblob = br.toBlob(blob.size);
+                return nblob;
+            }
+            console.log("not found : " + name);
+            await _sysEventStack[0].emit("file.changed");
+            return null;
+        },
+        writeable : false
+    });
+    // >>sys.open
+    Object.defineProperty(sys,"open",{
+        value : async function(filename) {
+            if(sys._frontSecure.value && this.dbSecure && "can" in this.dbSecure && !this.dbSecure.can.open) { return; }
+            var parts = filename.split("/");
+            if(parts[0] == "" && parts.length>1) { // has / at first
+            } else if(parts[0] != "" && parts.length>1) {
+                filename = "/" + filename; // normalize path
+            } else if(parts.length==1 && filename != "") {
+                filename = "/" + filename;
+            }
+            var text = await sys.loadText(filename);
+            sys.file = filename;
+            sys.sector.msg.$.elementSetPacketAsync(`<div style="font-size:30px;">${filename}</div>`);
+            sys.editor.setValue(text);
+            sys.editor.flags.change = true;
+            await _sysEventStack[0].emit("file.open");
+        },
+        writeable : false
+    });
+    var _tmpFile = [];
+    var _runStack = [];
+    Object.defineProperty(sys,"evalbox",{
+        value : async function(data,track,target) {
+            if(sys._frontSecure.value && this.dbSecure && "can" in this.dbSecure && !this.dbSecure.can.evalbox) { return; }
+            const currentCode = data;
+            console.info("running tmpfile:" + data);
+            if(currentCode!=null) {
+                _runStack.push(":tmpfile:"+_tmpFile.length);
+                _tmpFile.push(data);
+                mark.el.style.display = "";
+                mark.el.style.backgroundColor = "lime";
+                var code = sys.build(currentCode,"execComplete",track);
+                sys.editor.updateOptions({ readOnly: true });
+                var f = async ()=>{ // this blocks manually change editor, if disable this it loads the last of execution
+                    _sysEventStack[0].off("execComplete",f);
+                    sys.editor.flags.change = false;
+                    sys.editor.updateOptions({ readOnly: false });
+                    _runStack.pop();
+                    _tmpFile.pop();
+                };
+                _sysEventStack[0].on("execComplete",f);
+                try {
+                    eval(code);
+                    await sandbox2.apply(target);
+                } catch(e) {
+                    //console.log("runstack",_runStack);
+                    throw e;
+                }
+            }
+        },
+        writeable : false 
+    });
+    Object.defineProperty(sys,"run",{
+        value : async function(filename,track,target) {
+            if(sys._frontSecure.value && this.dbSecure && "can" in this.dbSecure && !this.dbSecure.can.run) { return; }
+            const currentCode = await sys.loadText(filename);
+            console.info("running:",filename);
+            if(currentCode!=null) {
+                _runStack.push(filename);
+                mark.el.style.display = "";
+                mark.el.style.backgroundColor = "lime";
+                var code = sys.build(currentCode,"execComplete",track);
+                sys.editor.updateOptions({ readOnly: true });
+                var f = async ()=>{ // this blocks manually change editor, if disable this it loads the last of execution
+                    _sysEventStack[0].off("execComplete",f);
+                    sys.editor.flags.change = false;
+                    sys.editor.updateOptions({ readOnly: false });
+                    _runStack.pop();
+                };
+                _sysEventStack[0].on("execComplete",f);
+                try {
+                    eval(code);
+                    await sandbox2.apply(target);
+                } catch(e) {
+                    //console.log("runstack",_runStack);
+                    throw e;
+                }
+            }
+        },
+        writeable : false
+    });
+    // >>sys.copy
+    Object.defineProperty(sys,"copy",{
+        value : async function(filename1,filename2) {
+            if(sys._frontSecure.value && this.dbSecure && "can" in this.dbSecure && !this.dbSecure.can.copy) { return; }
+            console.log("in move");
+
+            var parts = filename1.split("/");
+            if(parts[0] == "" && parts.length>1) { // has / at first
+            } else if(parts[0] != "" && parts.length>1) {
+                filename1 = "/" + filename1; // normalize path
+            } else if(parts.length==1 && filename1 != "") {
+                filename1 = "/" + filename1;
+            }
+
+            var parts2 = filename2.split("/");
+            if(parts2[0] == "" && parts2.length>1) { // has / at first
+            } else if(parts2[0] != "" && parts2.length>1) {
+                filename2 = "/" + filename2; // normalize path
+            } else if(parts2.length==1 && filename2 != "") {
+                filename2 = "/" + filename2;
+            }
+
+            console.log(filename1,filename2);
+            var meta1 = await sys.db.file_meta.find("name",filename1);
+            if(meta1) {
+                console.log("has ",filename1);
+                var meta2 = await sys.db.file_meta.find("name",filename2);
+                if(!meta2) {
+                    console.log("has not ",filename2);
+                    // ok to move
+                    var data1 = await sys.db.file_raw.find(meta1.fileid);
+                    if(meta1.type == "blob") {
+                        var br = new BinaryReader(data1,await data1.arrayBuffer());
+                        var nblob = br.toBlob(data1.size);
+                        await sys.saveBlob(filename2,nblob);
+
+                    } else if(meta1.type == "text") {
+                        console.log(data1);
+                        data1 = Binary.utf8ab2str( await data1.arrayBuffer(), data1.size );
+                        await sys.saveText(filename2,data1);
+                    }
+
+                } else {
+                    async function overwrite_dialog(file) {
+                        var choice = await new Promise(async (resolve,reject)=>{
+                            var schema = await msg.$.elementSetPacketAsync(`
+                                <div style="margin:10px;border:solid 1px #000;padding:20px;">
+                                    <div style="font-size:30px;">Zip Restore</div>
+                                    <div style="padding:20px;">
+                                        <div>Do you like to overwrite ${file}?</div>
+                                        <div>
+                                            <button id="btnYes">yes</button>
+                                            <button id="btnNo">no</button>
+                                            <button id="btnCancel">cancel</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            `);
+                            schema.el.btnYes.addEventListener("click",()=>{
+                                resolve(1);
+                            });
+                            schema.el.btnNo.addEventListener("click",()=>{
+                                resolve(2);
+                            });
+                            schema.el.btnCancel.addEventListener("click",()=>{
+                                resolve(3);
+                            });
+                        });
+                        msg.$.elementsClear();
+                        return choice;
+                    }
+                    var choice = await overwrite_dialog(filename2);
+                    if(choice==1) {
+                        // ok to replace
+
+                        // ok to move
+                        await sys.delete(filename2);
+
+                        var data1 = await sys.db.file_raw.find(meta1.fileid);
+                        if(meta1.type == "blob") {
+                            var br = new BinaryReader(data1,await data1.arrayBuffer());
+                            var nblob = br.toBlob(data1.size);
+                            await sys.saveBlob(filename2,nblob);
+
+                        } else if(meta1.type == "text") {
+                            console.log(data1);
+                            data1 = Binary.utf8ab2str( await data1.arrayBuffer(), data1.size );
+                            await sys.saveText(filename2,data1);
+                        }
+
+                    }
+                }
+            } else {
+                console.log("has not ",filename1);;
+            }
+        },
+        writeable : false
+    });
+    // >>sys.move
+    Object.defineProperty(sys,"move",{
+        value : async function(filename1,filename2) {
+            if(sys._frontSecure.value && this.dbSecure && "can" in this.dbSecure && !this.dbSecure.can.move) { return; }
+            console.log("in move");
+
+            var parts = filename1.split("/");
+            if(parts[0] == "" && parts.length>1) { // has / at first
+            } else if(parts[0] != "" && parts.length>1) {
+                filename1 = "/" + filename1; // normalize path
+            } else if(parts.length==1 && filename1 != "") {
+                filename1 = "/" + filename1;
+            }
+
+            var parts2 = filename2.split("/");
+            if(parts2[0] == "" && parts2.length>1) { // has / at first
+            } else if(parts2[0] != "" && parts2.length>1) {
+                filename2 = "/" + filename2; // normalize path
+            } else if(parts2.length==1 && filename2 != "") {
+                filename2 = "/" + filename2;
+            }
+
+            console.log(filename1,filename2);
+            var meta1 = await sys.db.file_meta.find("name",filename1);
+            if(meta1) {
+                console.log("has ",filename1);
+                var meta2 = await sys.db.file_meta.find("name",filename2);
+                if(!meta2) {
+                    console.log("has not ",filename2);
+                    // ok to move
+                    var data1 = await sys.db.file_raw.find(meta1.fileid);
+                    if(meta1.type == "blob") {
+                        let br = new BinaryReader(data1,await data1.arrayBuffer());
+                        let nblob = br.toBlob(data1.size);
+                        await sys.saveBlob(filename2,nblob);
+
+                    } else if(meta1.type == "text") {
+                        console.log(data1);
+                        data1 = Binary.utf8ab2str( await data1.arrayBuffer(), data1.size );
+                        await sys.saveText(filename2,data1);
+                    }
+                    await sys.delete(filename1);
+
+                } else {
+                    async function overwrite_dialog(file) {
+                        var choice = await new Promise(async (resolve,reject)=>{
+                            var schema = await msg.$.elementSetPacketAsync(`
+                                <div style="margin:10px;border:solid 1px #000;padding:20px;">
+                                    <div style="font-size:30px;">Move</div>
+                                    <div style="padding:20px;">
+                                        <div>Do you like to overwrite ${file}?</div>
+                                        <div>
+                                            <button id=sys.add_security_check(account_instance,folder_path)
+                            `);
+                            schema.el.btnYes.addEventListener("click",()=>{
+                                resolve(1);
+                            });
+                            schema.el.btnNo.addEventListener("click",()=>{
+                                resolve(2);
+                            });
+                            schema.el.btnCancel.addEventListener("click",()=>{
+                                resolve(3);
+                            });
+                        });
+                        msg.$.elementsClear();
+                        return choice;
+                    }
+                    var choice = await overwrite_dialog(filename2);
+                    if(choice==1) {
+                        // ok to replace
+
+                        // ok to move
+                        await sys.delete(filename2);
+
+                        var data1 = await sys.db.file_raw.find(meta1.fileid);
+                        if(meta1.type == "blob") {
+                            let br = new BinaryReader(data1,await data1.arrayBuffer());
+                            let nblob = br.toBlob(data1.size);
+                            await sys.saveBlob(filename2,nblob);
+
+                        } else if(meta1.type == "text") {
+                            console.log(data1);
+                            data1 = Binary.utf8ab2str( await data1.arrayBuffer(), data1.size );
+                            await sys.saveText(filename2,data1);
+                        }
+                        await sys.delete(filename1);
+
+                    }
+                }
+            } else {
+                console.log("has not ",filename1);;
+            }
+        },
+        writeable : false
+    });
+    // >>sys.delete
+    Object.defineProperty(sys,"delete",{
+        value : async function(name) {
+            if(sys._frontSecure.value && this.dbSecure && "can" in this.dbSecure && !this.dbSecure.can.delete) { return; }
+            var parts = name.split("/");
+            if(parts[0] == "" && parts.length>1) { // has / at first
+            } else if(parts[0] != "" && parts.length>1) {
+                name = "/" + name; // normalize path
+            } else if(parts.length==1 && name != "") {
+                name = "/" + name;
+            }
+
+            var meta = await sys.db.file_meta.find("name",name);
+            if(meta) {
+                var file_backup = sys.file;
+                console.log("delete file_raw",meta.fileid);
+                await sys.db.file_raw.delete(meta.fileid);
+                var metaid = await sys.db.file_meta.findId("name",name);
+                console.log("delete file_meta",metaid);
+                await sys.db.file_meta.delete(metaid);
+                delete _dbFileCache[sys.dbName][ name ];
+
+                if(name == file_backup) {
+                    this.open("/default.js");
+                } else {
+                    this.open(file_backup);
+                }
+                
+                await _sysEventStack[0].emit("file.changed");
+                saveDbCache(this.dbName,_dbFileCache[this.dbName]);
+            }
+        },
+        writeable : false
+    });
+    window.UPDATE_CACHE = async function() {
+        var metaId = await sys.db.file_meta_cache.findId("name",sys.dbName);
+        console.log("META ID",metaId);
+        if(metaId) {
+            console.log("SET UPDATE");
+            var meta = await sys.db.file_meta_cache.find("name",sys.dbName);
+            await sys.db.file_meta_cache.update(metaId,{
+                name : meta.name,
+                fileid : meta.fileid,
+                needUpdate : true
+            });
+            await sys.ls(true);
+            console.log("CACHE UPDATED.");
+        }
+    }
+    // >>sys.ls
+    Object.defineProperty(sys,"ls",{
+        value : async function(sync) {
+            var ret = [];
+            if(this.dbName in _dbFileCache) {
+                //return cached.
+                for(var key in _dbFileCache[this.dbName]) { ret.push(_dbFileCache[this.dbName][key]); }
+                return ret;
+            } else {
+                var load = await loadDbCache(this.dbName);
+                if(load != null) {
+                    console.log("ls load db cache");
+                    console.log(load);
+                    _dbFileCache[this.dbName] = load;
+                    for(var key in _dbFileCache[this.dbName]) { ret.push(_dbFileCache[this.dbName][key]); }
+                    return ret;
+                } else {
+                    _dbFileCache[this.dbName] = {};
+                }
+            }
+            console.log("ls creating db cache");
+            var ids = await sys.db.file_meta.findAllIds();
+            for(var x = 0; x < ids.length;x++) {
+                var meta = await sys.db.file_meta.find(ids[x]);
+                console.log("meta",meta);
+                _dbFileCache[this.dbName][ meta.name ] = meta;
+                ret.push(meta);
+            }
+            if(sync) {
+                await saveDbCache(this.dbName,_dbFileCache[this.dbName]);
+            } else {
+                saveDbCache(this.dbName,_dbFileCache[this.dbName]);
+            }
+            return ret;
+        },
+        writeable : false
+    });
+    sys.context = {};
+    sys.restoreError = async function() {
+        sys.editor.setValue(await sys.loadText(sys.file));
+    };
+    // >>sys.backup
+    Object.defineProperty(sys,"backup",{
+        value : async function(name,path,options) {
+            const f = genId("",10);
+            if(sys._frontSecure.value && this.dbSecure && "can" in this.dbSecure && !this.dbSecure.can.backup) { return; }
+            var zip = new JSZip();
+            var ids = await sys.db.file_meta.findAllIds();
+            var gmeta = {};
+            var test_path = Object.prototype.toString.apply(path) == "[object String]";
+            console.log("BACKUP PATH",path);
+            for(var x =0; x < ids.length;x++) {
+                var meta = await sys.db.file_meta.find(ids[x]);
+                if(path==undefined || path == null || (test_path && meta.name.indexOf(path)==0)) {
+                    console.log(meta.name);
+                    if("ignore" in options) {
+                        var check = false;
+                        for(var y = 0; y < options.ignore.length;y++) {
+                            if(meta.name.indexOf(options.ignore[y])==0) {
+                                check = true;
+                                break;
+                            }
+                        }
+                        if(!check) {
+                            
+                            gmeta[meta.name] = meta;
+                            var data = await sys.db.file_raw.find(meta.fileid);
+                            console.log( data );
+                            zip.file(meta.name,data);
+                        } else {
+                            console.log("ignored");
+                        }
+                    } else {
+                        gmeta[meta.name] = meta;
+                        var data = await sys.db.file_raw.find(meta.fileid);
+                        console.log( data );
+                        zip.file(meta.name,data);
+                    }
+                }
+            }
+            if(test_path) {
+                gmeta["__config_restore__"] = {
+                    path
+                };
+            }
+            zip.file("__meta__.json",JSON.stringify(gmeta));
+            var blob = await zip.generateAsync({type:"blob"});
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            const name2 = f();
+            a.download = name2;
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => {
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+            }, 5000);
+        },
+        writeable : false
+    });
+    // >>sys.restore
+    Object.defineProperty(sys,"restore",{
+        value : async function(e,path) {
+            if(sys._frontSecure.value && this.dbSecure && "can" in this.dbSecure && !this.dbSecure.can.restore) { return; }
+            var test_path = Object.prototype.toString.apply(path) == "[object String]";
+            var has_path = test_path ? true : false;
+            if(e.target.files.length>0) {
+                var file_info = e.target.files[0];
+                let reader = new FileReader();
+                async function overwrite_dialog(file) {
+                    var choice = await new Promise(async (resolve,reject)=>{
+                        var schema = await msg.$.elementSetPacketAsync(`
+                            <div style="margin:10px;border:solid 1px #000;padding:20px;">
+                                <div style="font-size:30px;">Zip Restore</div>
+                                <div style="padding:20px;">
+                                    <div>Do you like to overwrite ${file}?</div>
+                                    <div>
+                                        <button id="btnYes">yes</button>
+                                        <button id="btnNo">no</button>
+                                        <button id="btnCancel">cancel</button>
+                                    </div>
+                                </div>
+                            </div>
+                        `);
+                        schema.el.btnYes.addEventListener("click",()=>{
+                            resolve(1);
+                        });
+                        schema.el.btnNo.addEventListener("click",()=>{
+                            resolve(2);
+                        });
+                        schema.el.btnCancel.addEventListener("click",()=>{
+                            resolve(3);
+                        });
+                    });
+                    msg.$.elementsClear();
+                    return choice;
+                }
+                reader.onload = async function(e2) {
+                    console.log(file_info);
+                    let blob = new Blob([new Uint8Array(e2.target.result)]);
+                    //if(file_info.type == "application/zip") {
+                        try {
+                            var zip = await JSZip.loadAsync(blob);
+                            var meta_json_str = await zip.file("__meta__.json").async("string");
+                            var meta_json = JSON.parse(meta_json_str);
+                            for(var file in meta_json) {
+
+                                if(file == "__config_restore__") continue;
+                                var _pdest = file;
+                                /*
+                                
+                                if(test_path) {
+                                    //path = path == "/" ? "" : path;
+                                    if(path.indexOf(meta_json["__config_restore__"].path)==0) {
+                                        _pdest = path + path.substring(meta_json["__config_restore__"].path.length);
+                                    } else {
+                                        _pdest = path + _pdest;
+                                    }
+                                }
+                                */
+                                var meta = await sys.db.file_meta.find("name",_pdest);
+                                console.log("PDEST",_pdest,meta_json[file],meta);
+                                
+                                if(meta == null) {
+                                    var f = "";
+                                    var _target = null;
+                                    if(meta_json[file].type == "text") {
+                                        _target = await zip.file(file).async("string");
+                                        f = "saveText";
+                                    } else if(meta_json[file].type == "blob") {
+                                        _target = await zip.file(file).async("blob");
+                                        f = "saveBlob";
+                                    } else {
+                                        console.error(file,meta_json[file].type);
+                                    }
+                                    sys[f](_pdest,_target);
+                                } else {
+                                    var choice = await overwrite_dialog(file);
+                                    if(choice == 3) break;
+                                    if(choice == 1) {
+                                        var f = "";
+                                        var _target = null;
+                                        if(meta_json[file].type == "text") {
+                                            _target = await zip.file(file).async("string");
+                                            f = "saveText";
+                                        } else if(meta_json[file].type == "blob") {
+                                            _target = await zip.file(file).async("blob");
+                                            f = "saveBlob";
+                                        } else {
+                                            console.error(file,meta_json[file].type);
+                                        }
+                                        sys[f](_pdest,_target);
+                                    }
+                                }
+                                await new Promise((resolve)=>{
+                                    setTimeout(()=>{
+                                        resolve();
+                                    },50);
+                                });
+                            }
+                            if(!has_path) {
+                                window.location.reload();
+                            }
+                        } catch(e) {
+                            console.error(e);
+                        }
+                    /*
+                    } else {
+                        var filename = file_info.name;
+                        filename = prompt("filename",filename);
+
+                        var parts = filename.split("/");
+                        if(parts[0] == "" && parts.length>1) { // has / at first
+
+                        } else if(parts[0] != "" && parts.length>1) {
+                            filename = "/" + filename; // normalize path
+                        } else if(parts.length==1 && filename != "") {
+                            filename = "/" + filename;
+                        }
+                        if(test_path) {
+                            path = path == "/" ? "" : path;
+                        }
+
+                        if( parts.length == 1 ) {
+                            filename = path + filename;
+                        }
+
+                        var meta = await sys.db.file_meta.find("name",filename);
+                        if(meta==null) {
+                            sys.saveBlob(filename,blob);
+                        } else {
+                            var choice = await overwrite_dialog(filename);
+                            if(choice == 1) {
+                                sys.saveBlob(filename,blob);
+                            }
+                        }
+                    }
+                    */
+                };
+                reader.readAsArrayBuffer(file_info);
+            }
+        },
+        writeable : false
+    });
+    // >>sys.build
+
+    
+    Object.defineProperty(sys,"build",{
+        value : function(code,cleanup,track) {
+            if(sys._frontSecure.value && this.dbSecure && "can" in this.dbSecure && !this.dbSecure.can.build) { return; }
+            var sb = [];
+            console.log("build track",track);
+            if(track) {
+                if( Object.prototype.toString.apply(track) == "[object String]" ) {
+                    track = JSON.stringify(track);
+                } else {
+                    throw new Error("invalid track");
+                }
+            }
+            if(cleanup) {
+                sb.push("await _sysEventStack[0].emit(" + JSON.stringify(cleanup) + ");");
+            }
+            // code can accept ; } catch(e) { } } BADCODE must parse to statements, and remove global vars scope in order to think about accepting
+            console.error( "parsed" + JsExpression.parse("{{" + track + "}}")[0] );
+
+            return `async function sandbox2() {
+                // remove of scope
+
+                try {
+                    var track = ${ JsExpression.parse("{{" + track + "}}")[0] };
+                    `+code+`
+                    ${sb.join("")}
+                    } catch(e) {
+                    console.info("stacktrace",_runStack);
+                    console.info(_runStack[_runStack.length-1],e.message);
+                    if(_runStack[_runStack.length-1].indexOf(":tmpfile")==0) { // eval
+                        console.log( _tmpFile[ parseInt( _runStack[_runStack.length-1].substring( ":tmpfile:".length) ) ] );
+                    }
+                    console.info("holder:",this);
+                    mark.el.style.display = "";
+                    mark.el.style.backgroundColor = "red";
+                    ${sb.join("")}
+                    
+                    console.error(e);
+                    
+                    setTimeout(()=>{
+                        mark.el.style.display = "none";
+                    },1000);
+                    setTimeout(()=>{
+                        error.$.elementsClear();
+                    },5000);
+                    throw e;
+                }
+
+            }`;
+        },
+        writeable : false
+    });
+    Object.defineProperty(sys,"build.backup",{
+        value : function(code,cleanup,track) {
+            if(sys._frontSecure.value && this.dbSecure && "can" in this.dbSecure && !this.dbSecure.can.build) { return; }
+            var sb = [];
+            console.log("build track",track);
+            if(track) {
+                if( Object.prototype.toString.apply(track) == "[object String]" ) {
+                    track = JSON.stringify(track);
+                } else {
+                    throw new Error("invalid track");
+                }
+            }
+            if(cleanup) {
+                sb.push("await _sysEventStack[0].emit(" + JSON.stringify(cleanup) + ");");
+            }
+            // code can accept ; } catch(e) { } } BADCODE must parse to statements, and remove global vars scope in order to think about accepting
+            console.error("code can accept ; } catch(e) { } } BADCODE must parse to statements, and remove global vars scope in order to think about accepting");
+            console.info("you can't prevent suicide users from killing themselves.");
+            return `async function sandbox2() {
+                // remove of scope
+
+                try {
+                    var track = ${ JsExpression.parse("{{" + track + "}}")[0] };
+                    `+code+`
+                    ${sb.join("")}
+                 } catch(e) {
+                    console.info("stacktrace",_runStack);
+                    console.info(_runStack[_runStack.length-1],e.message);
+                    if(_runStack[_runStack.length-1].indexOf(":tmpfile")==0) { // eval
+                        console.log( _tmpFile[ parseInt( _runStack[_runStack.length-1].substring( ":tmpfile:".length) ) ] );
+                    }
+                    console.info("holder:",this);
+                    mark.el.style.display = "";
+                    mark.el.style.backgroundColor = "red";
+                    ${sb.join("")}
+                    sys.editor.updateOptions({ readOnly: false });
+                    error.$.elementSetPacketAsync(\`<div style="font-size:20px;color:red;">\`+(""+e)+\`</div>\`);
+                    setTimeout(()=>{
+                        mark.el.style.display = "none";
+                    },1000);
+                    setTimeout(()=>{
+                        error.$.elementsClear();
+                    },5000);
+                    throw e;
+                }
+
+            }`;
+        },
+        writeable : false
+    });
+    // >>sys.toogleTerminal
+    Object.defineProperty(sys,"toogleTerminal",{
+        value : function(b) {
+            if(sys._frontSecure.value && this.dbSecure && "can" in this.dbSecure && !this.dbSecure.can.toogleTerminal) { return; }
+            if(sys.settings.terminal.visible || b === false) {
+                terminal.el.style.display = "none";
+                sys.settings.terminal.visible = false;
+                document.getElementsByTagName("body")[0].focus();
+                console.log("TURN EDITOR OFF");
+            } else if(b===true || b == undefined) {
+                terminal.el.style.display = "";
+                sys.settings.terminal.visible = true;
+                sys.editor.focus();
+                editorPanel.el.scrollIntoView();
+                console.log("TURN EDITOR ON");
+            }
+        },
+        writeable : false
+    });
+    // >>sys.loadSuper
+    Object.defineProperty(sys,"overloadSuper",{
+        value : async function(name,extra,target) {
+            var this_id = genId("PROC-",6)();
+            if(sys._frontSecure.value && this.dbSecure && "can" in this.dbSecure && !this.dbSecure.can.loadSuper) { return; }
+            console.log("overloadSuper",this_id,name);
+            try {
+                var s = await sys.loadText(name);
+                // register for updates on file? and returned exports? must send an event listener to watch for updates? (not so usefull yet)
+                target = target ? target : loader;
+                console.log(">> load super:",this_id,name,s);
+                if(s!=null) {
+                    if(extra) {
+                        var sb = [];
+                        var sb0 = [];
+                        for(var key in extra) {
+                            sb.push(key + "={{this.extra[" + JSON.stringify(key)+"]}}");
+                        }
+                        var schema = await target.$.elementSetPacketAsync(`
+                            <Component id="control" srcData={{this.data}} sys={{this.sys}} target={{this.self}} ${sb.join(" ")}></Component>
+                        `,{context:{
+                            data:s, sys,extra, self : target
+                        }});
+                        return schema.exports.control;
+                    } else {
+                        
+                        var schema = await target.$.elementSetPacketAsync(`
+                            <Component id="control" srcData={{this.data}} sys={{this.sys}} target={{this.self}}></Component>
+                        `,{context:{
+                            data:s, sys, self:target
+                        }});
+                        return schema.exports.control;
+                    }
+                } else {
+                    throw new Error("file " + this_id + " : " + name + " not found.");
+                }
+            } catch(e) {
+                console.log(e);
+                console.log(e.stack);
+                throw new Error("failed to load " + this_id + " :" + name + " --> " + e.message);
+            }
+        },
+        writeable : false
+    });
+    Object.defineProperty(sys,"loadSuper",{
+        value : async function(name,extra,target) {
+            if(sys._frontSecure.value && this.dbSecure && "can" in this.dbSecure && !this.dbSecure.can.loadSuper) { return; }
+            console.log(name);
+            try {
+                var s = await sys.loadText(name);
+                // register for updates on file? and returned exports? must send an event listener to watch for updates? (not so usefull yet)
+                target = target ? target : loader;
+                console.log("load super:",name,s);
+                if(s!=null) {
+                    if(extra) {
+                        var sb = [];
+                        var sb0 = [];
+                        for(var key in extra) {
+                            sb.push(key + "={{this.extra[" + JSON.stringify(key)+"]}}");
+                        }
+                        console.log(s);
+                        var schema = await target.$.elementPushPacketAsync(`
+                            <Component id="control" srcData={{this.data}} sys={{this.sys}} target={{this.self}} ${sb.join(" ")}></Component>
+                        `,{context:{
+                            data:s, sys,extra, self : target
+                        }});
+                        return schema.exports.control;
+                    } else {
+                        var schema = await target.$.elementPushPacketAsync(`
+                            <Component id="control" srcData={{this.data}} sys={{this.sys}} target={{this.self}}></Component>
+                        `,{context:{
+                            data:s, sys, self:target
+                        }});
+                        return schema.exports.control;
+                    }
+                } else {
+                    throw new Error("file " + name + " not found.");
+                }
+            } catch(e) {
+                console.log(e);
+                console.log(e.stack);
+                throw new Error("failed to load " + name + " --> " + e.message);
+            }
+        },
+        writeable : false
+    });
+
+    Object.defineProperty(sys,"loadSuper.backup",{
+        value : async function(name,extra,target) {
+            if(sys._frontSecure.value && this.dbSecure && "can" in this.dbSecure && !this.dbSecure.can.loadSuper) { return; }
+            console.log(name);
+            try {
+                var s = await sys.loadText(name);
+                // register for updates on file? and returned exports? must send an event listener to watch for updates? (not so usefull yet)
+                target = target ? target : loader;
+                console.log("load super:",name,s);
+                if(s!=null) {
+                    if(extra) {
+                        
+                        var sb = [];
+                        var sb0 = [];
+                        for(var key in extra) {
+                            sb.push(key + "={{this.extra[" + JSON.stringify(key)+"]}}");
+                        }
+                        var schema = await target.$.elementPushPacketAsync(`
+                            <Component id="control" srcData={{this.data}} sys={{this.sys}} target={{this.self}} ${sb.join(" ")}></Component>
+                        `,{context:{
+                            data:s, sys,extra, self : target
+                        }});
+                        return schema.exports.control;
+                    } else {
+                        var schema = await target.$.elementPushPacketAsync(`
+                            <Component id="control" srcData={{this.data}} sys={{this.sys}} target={{this.self}}></Component>
+                        `,{context:{
+                            data:s, sys, self:target
+                        }});
+                        return schema.exports.control;
+                    }
+                } else {
+                    throw new Error("file " + name + " not found.");
+                }
+            } catch(e) {
+                console.log(e);
+                console.log(e.stack);
+                throw new Error("failed to load " + name + " --> " + e.message);
+            }
+        },
+        writeable : false
+    });
+    Object.defineProperty(sys,"boot",{
+        value : async function(args,target) {
+            if(sys._frontSecure.value && this.dbSecure && "can" in this.dbSecure && !this.dbSecure.can.boot) { return; }
+            try {
+                // should emit event of boot to protect files in file manager while booting
+                var check = await sys.loadText("/sys/boot.super");
+                if(check == null) {
+                    return true;
+                } else {
+                    sys.editor.updateOptions({ readOnly: true });
+                    var result = await sys.loadSuper("/sys/boot.super",args,target);
+                    // disable editor
+                    var default_filename = "/default.js";
+                    var d = await sys.loadText(default_filename);
+                    sys.file = default_filename;
+                    if(d==null) {
+                        console.log("load 0");
+                        await sys.saveText(default_filename,"");
+                        d = await sys.loadText(default_filename);
+                        sys.file = default_filename;
+                    }
+                    sys.editor.setValue(d);
+                    sys.sector.msg.$.elementSetPacketAsync(`<div style="font-size:30px;">${default_filename}</div>`);
+                    sys.toogleTerminal(false);
+                    _sysEventStack[0].emit("boot.finish",[]);
+                    var result_type = Object.prototype.toString.apply(result);
+                    if(result_type == "[object Function]") {
+                        var r = result();
+                        // enable editor
+
+                        // should emit event of boot to remove protect files in file manager after booting
+
+                        sys.editor.updateOptions({ readOnly: false });
+                        return r !== false;
+                    } else if(result_type == "[object AsyncFunction]") {
+                        var r = await result();
+                        // enable editor
+                        // should emit event of boot to remove protect files in file manager after booting
+                        sys.editor.updateOptions({ readOnly: false });
+                        return r !== false;
+                    } else if(result_type == "[object Object]" && "result" in result) {
+                        var result_type2 = Object.prototype.toString.apply(result.result);
+                        if(result_type2 == "[object Function]") {
+                            var r = result.result();
+                            sys.editor.updateOptions({readOnly :false });
+                            return [r !== false,result];
+                        } else if(result_type2 == "[object AsyncFunction]") {
+                            var r = await result.result();
+                            // enable editor
+                            // should emit event of boot to remove protect files in file manager after booting
+                            sys.editor.updateOptions({ readOnly: false });
+                            return [r !== false,result];
+                        } else {
+                            sys.editor.updateOptions({readOnly :false });
+                            return [result.result !== false,result];
+                        }
+                    } else {
+                        // enable editor
+                        // should emit event of boot to remove protect files in file manager after booting
+                        sys.editor.updateOptions({ readOnly: false });
+                        return result !== false;
+                    }
+                }
+            } catch(e) {
+                // should emit event of boot to remove protect files in file manager after booting
+                sys.editor.updateOptions({ readOnly: false });
+                error.$.elementSetPacketAsync(`<div style="font-size:20px;color:red;">`+(""+e)+`</div>`);
+                return false;
+            }
+        },
+        writeable : false
+    });
+
+    Object.defineProperty(sys,"toClip",{
+        value : async function(data) {
+            await navigator.clipboard.writeText( data );
+        },
+        writeable : false
+    });
+    Object.defineProperty(sys,"fromClip",{
+        value : async function() {
+            var text = await navigator.clipboard.readText();
+            return text;
+        },
+        writeable : false
+    });
+    
+    sys.mode = {};
+    sys.mode.linux = {
+        ___RESET__ : ()=>{},
+        cat : ()=>{},
+        echo : ()=>{},
+        open : ()=>{},
+        close : ()=>{},
+        pipe : ()=>{},
+        read : ()=>{},
+        write : ()=>{},
+        readdir : ()=>{},
+        ls : ()=>{},
+        rm : ()=>{},
+        ln : ()=>{},
+        cp : ()=>{},
+        mv : ()=>{},
+        chmod : ()=>{},
+        mkdir : ()=>{},
+        rmdir : ()=>{},
+        cd : ()=>{},
+        pwd : ()=>{}
+    };
+    sys.mode.node = {
+        ___RESET__ : ()=>{},
+        fs : {
+            readFile : ()=>{},
+            writeFile : ()=>{},
+            unlink : ()=>{},
+            readdir : ()=>{},
+            mkdir : ()=>{},
+            rmdir : ()=>{},
+            rename : ()=>{},
+            stat : ()=>{},
+            lstat : ()=>{},
+            readlink : ()=>{},
+            symlink : ()=>{}
+        }
+    };
+
+    /*
+    
+    
+    
+    
+        USER INTERFACE
+
+
+
+
+    */
+
+    editorContainer.el.style.width = "100%";
+    editor.el.style.width = "100%";
+    editor.el.style.font = "Courier New";
+    editor.el.style.fontWeight = "bold";
+    window.addEventListener("resize",()=>{
+        editorContainer.el.style.width = "100%";
+        editor.el.style.width = "100%";
+        sys.editor.layout();
+    });
+
+    window.addEventListener("keydown",async (e)=>{
+        console.log(e.keyCode);
+        if(e.getModifierState(e.ctrlKey) && e.keyCode == 68) {
+            e.preventDefault();
+            await sys.open("/default.js");
+            return false;
+        }
+        if(e.getModifierState(e.ctrlKey) && e.keyCode == 78) {
+            e.preventDefault();
+            var port = prompt("port:");
+            var r = await fetch("/api/new",{
+                method : "POST",
+                body : JSON.stringify({port:parseInt(port)})
+            });
+            var t = await r.text();
+            var j = JSON.parse(t);
+            if(j.result) {
+                window.open("http://localhost:" + port + "/");
+            }
+            return false;
+        }
+        if(e.getModifierState(e.ctrlKey) && (e.keyCode == 79 || e.keyCode == 83)) {
+            e.preventDefault();
+        }
+
+        if(e.keyCode == 16) {
+            sys.keyboard.shift = true;
+        }
+        if(e.keyCode == 17) {
+            //sys.keyboard.ctrl = true;
+        }
+        if(e.keyCode == 18) {
+            sys.keyboard.alt = true;
+        }
+        if(e.getModifierState(e.ctrlKey) && e.keyCode == 192) {
+            e.preventDefault();
+            sys.toogleTerminal();
+            sys.editor.layout();
+        }
+        return false;
+    },true)
+    window.addEventListener("keyup",(e)=>{
+        if(e.keyCode == 16) sys.keyboard.shift = false;
+        //if(e.keyCode == 17) sys.keyboard.ctrl = false;
+        if(e.keyCode == 18) sys.keyboard.alt = false;
+        //e.preventDefault();
+        if(!e.getModifierState(e.ctrlKey)) { 
+            if(e.keyCode == 27) { // escape
+                sys.editor.focus();
+            }
+            //return true;
+        }
+        return false;
+    },true);
+
+    require(['vs/editor/editor.main'], async function() {
+        await sys.ls(true);
+        sys.editor = monaco.editor.create(editor.el, {
+            suggestOnTriggerCharacters: false,
+            value: "",
+            fontFamily : "'Fira Code SemiBold', 'Verdana', 'Courier New', monospace",
+        });
+        sys.editor.updateOptions({ suggestOnTriggerCharacters: false });
+        sys.editor.flags = {
+            change : false
+        };
+        //sys.editor.model.onDidChangeContent((event) => {
+          //  sys.editor.setModelLanguage(sys.editor.getModels()[0], languages[ext]);
+        //});
+        sys.editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KEY_D, function() {
+        });
+        sys.editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KEY_N, async function() {
+            
+        });
+        sys.editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KEY_O, function() {
+            sys.editor.setValue(`sys.open("default");`);
+        });
+        sys.editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KEY_S, function() {
+            (async ()=>{
+                if(sys.file) {
+                    await sys.saveText(sys.file,sys.editor.getValue());
+                } else {
+                    var filename = prompt("file name:");
+                    var parts = filename.split("/");
+                    if(parts[0] == "" && parts.length>1) { // has / at first
+                    } else if(parts[0] != "" && parts.length>1) {
+                        filename = "/" + filename; // normalize path
+                    } else if(parts.length==1 && filename != "") {
+                        filename = "/" + filename;
+                    }
+                    if(filename && filename != "") {
+                        await sys.saveText(filename,sys.editor.getValue());
+                        var text = await sys.loadText(filename);
+                        sys.editor.setValue(text);
+                        sys.sector.msg.$.elementSetPacketAsync(`<div style="font-size:30px;">${filename}</div>`);
+                    } else {
+                        alert("not saved.");
+                    }
+                }
+            })();
+        });
+        sys.editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, function() {
+            ((async()=>{
+                if(!sys.file) sys.file = "anonymous";
+                var current = sys.file.slice(0);
+                console.info("--------------------------------------------------------------------------------");
+                console.info("running:",sys.file);
+                
+                const currentCode = sys.editor.getValue();
+                mark.el.style.display = "";
+                mark.el.style.backgroundColor = "lime";
+                if(sys.file.split(".").pop()=="super") {
+                    await sys.saveText("/tmp",currentCode);
+                    sys.overloadSuper("/tmp",{},sys.sector.loader_frontend);
+                } else {
+                    var code = sys.build(currentCode,"execComplete",genId("PROC-",6)());
+                    console.log(code);
+                    sys.editor.updateOptions({ readOnly: true });
+                    var f = async ()=>{ // this blocks manually change editor, if disable this it loads the last of execution
+                        sys.editor.updateOptions({ readOnly: false });
+                        if(!sys.editor.flags.change) {
+                            sys.file = current;
+                            sys.editor.setValue( currentCode );
+                        }
+                        _sysEventStack[0].off("execComplete",f);
+                        sys.editor.flags.change = false;
+                    };
+                    _sysEventStack[0].on("execComplete",f);
+                    try {
+                        _runStack.push(current);
+                        eval(code);
+                        await sandbox2.apply();
+                        _runStack.pop();
+                    } catch(e) {
+                        _runStack.pop();
+                        throw e;
+                    }
+
+                    setTimeout(()=>{
+                        mark.el.style.display = "none";
+                    },1000);
+                }
+            }))();
+        });
+        btnSave.el.addEventListener("click",async ()=>{
+            if(sys.file) {
+                sys.saveText(sys.file,sys.editor.getValue());
+            } else {
+                var filename = prompt("file name:");
+                var parts = filename.split("/");
+                if(parts[0] == "" && parts.length>1) { // has / at first
+                } else if(parts[0] != "" && parts.length>1) {
+                    filename = "/" + filename; // normalize path
+                } else if(parts.length==1 && filename != "") {
+                    filename = "/" + filename;
+                }
+                if(filename && filename != "") {
+                    sys.saveText(filename,sys.editor.getValue());
+                    var text = await sys.loadText(filename);
+                    sys.editor.setValue(text);
+                    sys.sector.msg.$.elementSetPacketAsync(`<div style="font-size:30px;">${filename}</div>`);
+                } else {
+                    alert("not saved.");
+                }
+            }
+        });
+        btnSaveAs.el.addEventListener("click",async ()=>{
+            var filename = prompt("file name:");
+            var parts = filename.split("/");
+            if(parts[0] == "" && parts.length>1) { // has / at first
+            } else if(parts[0] != "" && parts.length>1) {
+                filename = "/" + filename; // normalize path
+            } else if(parts.length==1 && filename != "") {
+                filename = "/" + filename;
+            }
+            await sys.saveText(filename,sys.editor.getValue());
+            sys.open(filename);
+        });
+        btnUpload.el.addEventListener("change",async (e)=>{
+            await sys.restore(e);
+        });
+        var result = await sys.boot({});
+        //if(result !== false) { btnUploadEditor.$.elementsClear(); }
+        console.log("BASE BOOT");
+    });
+
+
+    /*
+        >>sys.loadText("/sys/boot.super");
+<style>
+    body {
+        background-color:#555;
+    }
+    * {
+        --primary: crimson;
+    }
+</style>
+<script>
+var boot = true;
+var self = this;
+var events = self.props.sys.events;
+window._BOOT_CLOCK_START_ = window.performance.now();
+window._BOOT_CLOCK_ = ()=>{ return window.performance.now() - _BOOT_CLOCK_START_; };
+var cachedPositions = {};
+var json_str = await self.props.sys.loadText("/sys/boot.json");
+console.log(json_str);
+var bProjects = false, 
+    bFiles = false, 
+    bAgents = false, 
+    bTools = true, 
+    bApps = false,
+    bSettings = false, 
+    bBackup = true, 
+    bRestore = true;
+if(json_str!=null) {
+    var config = JSON.parse(json_str);
+    bProjects = config.projects;
+    bFiles = config.files;
+    bAgents = config.agents;
+    bTools = config.tools;
+    bApps = config.apps;
+    bBackup = config.backup;
+    bRestore = config.restore;
+    bSettings = config.settings;
+
+    console.log(">>EDITOR:",config.editor);
+
+    
+}
+
+
+
+// /sys/assets/icons/gnome-preferences-other.svg
+// /sys/assets/icons/gnome-system-file-manager.svg
+// {
+//    context:{
+//        icon_filemanager:icon_filemanager_imageUrl
+//        icon_tools : icon_tools_imageUrl
+//    }
+// }
+
+var icon_projects_blob1 = await self.props.sys.loadText("/sys/assets/icons/gnome-applications-office.svg");
+var icon_projects_imageUrl = window.URL.createObjectURL(new Blob([icon_projects_blob1],{type: 'image/svg+xml'}));
+
+var icon_filemanager_blob1 = await self.props.sys.loadText("/sys/assets/icons/gnome-system-file-manager.svg");
+var icon_filemanager_imageUrl = window.URL.createObjectURL(new Blob([icon_filemanager_blob1],{type: 'image/svg+xml'}));
+
+var icon_agents_blob1 = await self.props.sys.loadText("/sys/assets/icons/gnome-system-run.svg");
+var icon_agents_imageUrl = window.URL.createObjectURL(new Blob([icon_agents_blob1],{type: 'image/svg+xml'}));
+
+var icon_tools_blob1 = await self.props.sys.loadText("/sys/assets/icons/gnome-preferences-other.svg");
+var icon_tools_imageUrl = window.URL.createObjectURL(new Blob([icon_tools_blob1],{type: 'image/svg+xml'}));
+var icon_apps_blob1 = await self.props.sys.loadText("/sys/assets/icons/gnome-applications-other.svg");
+var icon_apps_imageUrl = window.URL.createObjectURL(new Blob([icon_apps_blob1],{type: 'image/svg+xml'}));
+
+var icon_floppy_blob1 = await self.props.sys.loadText("/sys/assets/icons/gnome-media-floppy.svg");
+var icon_floppy_imageUrl = window.URL.createObjectURL(new Blob([icon_floppy_blob1],{type: 'image/svg+xml'}));
+var icon_settings_blob1 = await self.props.sys.loadText("/sys/assets/icons/gnome-preferences-desktop-theme.svg");
+var icon_settings_imageUrl = window.URL.createObjectURL(new Blob([icon_settings_blob1],{type: 'image/svg+xml'}));
+var icon_network_blob1 = await self.props.sys.loadText("/sys/assets/icons/gnome-network-idle.svg");
+var icon_network_imageUrl = window.URL.createObjectURL(new Blob([icon_network_blob1],{type: 'image/svg+xml'}));
+
+
+var schema = await self.props.sys.sector.ui.$.elementSetPacketAsync(`\
+    <div style="display:flex;">
+        `+(bProjects ? `
+            <div class="dropdown m-1">
+                <button id="btnProjects" class="btn btn-primary dropdown-toggle"  data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    <img src={{this.icon_projects}}/> Projects
+                </button>
+                <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+                    <span id="btnProjectsNew" class="dropdown-item" style="cursor:pointer;">New</span>
+                    <span id="btnProjectsStatus" class="dropdown-item" style="cursor:pointer;">Status</span>
+                    <Component id="hldProjectsUnload"></Component>
+                    <div class="dropdown-divider"></div>
+                    <Component id="lstProjects"></Component>
+                    <div class="dropdown-divider"></div>
+                    <span id="btnProjectsSystem" class="dropdown-item" style="cursor:pointer;">System</span>
+                    <span id="btnProjectsSecure" class="dropdown-item" style="cursor:pointer;"><Component id="lblProjectsSecure"></Component></span>
+                </div>
+            </div>
+        `:'') + `
+        <div>
+        
+        `+(bFiles ? `<button id="btnFiles" class="btn btn-primary m-1"><img src={{this.icon_filemanager}}/> Files</button>` : '') + `
+        `+(bAgents? `<button id="btnCron" class="btn btn-primary m-1"> <img src={{this.icon_agents}}/> Agents</button>` : '' ) + `
+        </div>
+        `+(bTools ? `
+        <div class="dropdown m-1">
+            <button id="btnTools" class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                <img src={{this.icon_tools}} /> Tools
+            </button>
+            <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+                <span id="btnToolsColors" class="dropdown-item" style="cursor:pointer;">Colors</span>
+                <span id="btnToolsEmojis" class="dropdown-item" style="cursor:pointer;">Emojis & Chars</span>
+                <span id="btnToolsNumbers" class="dropdown-item" style="cursor:pointer;">Numbers</span>
+                <span id="btnToolsFonts" class="dropdown-item" style="cursor:pointer;">Fonts</span>
+                <span id="btnToolsStream" class="dropdown-item" style="cursor:pointer;">Stream</span>
+            </div>
+        </div>` : '')+`
+        `+(bApps ? `
+        <div class="dropdown m-1">
+            <button id="btnApps" class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                <img src={{this.icon_apps}} /> Apps
+            </button>
+            <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+            </div>
+        </div>
+        ` : '' )+ `
+        )
+        <div style="flex:1;"></div>
+        <div>
+            `+(bBackup ? `<button id="btnBackup" class="btn btn-primary mr-1 my-1"> <img src={{this.icon_floppy}} /> Backup</button>`:'') + `
+            `+(bRestore ? `<button class="btn btn-primary mr-1 my-1" style="position:relative;">
+                        <img src={{this.icon_floppy}} /> Restore
+                        <input type="file" id="btnRestore" value="restore" style="position:absolute;left:0px;top:0px;width:74px;height:40px;opacity:0.1;"/>
+                    </button>`:'') + `
+            `+(bSettings ? `<button id="btnSettings" class="btn btn-primary mr-1 my-1"> <img src={{this.icon_settings}} /> Settings</button>`:'') + `
+            <button id="btnAccount" class="btn btn-primary mr-1 my-1"> <img src={{this.icon_network}} /> Account</button>
+        </div>
+    </div>
+    <div id="accountContainer" style="display:none;">
+        <Component id="accountController"></Component>
+    </div>
+    <div id="settingsContainer" style="display:none;">
+        <Component id="settingsController"></Component>
+    </div>
+    
+    <div id="projectsContainer" style="display:none;">
+        <Component id="projectsController"></Component>
+    </div>
+    
+    <div id="filesContainer" style="display:none" class="mt-2">
+        <Component id="filesController"></Component>
+        <Component id="filesControllerAfter"></Component>
+    </div>
+    <div id="cronContainer" style="display:none;">
+        <Component id="cronController"></Component>
+    </div>
+    <div id="toolsColorsContainer" style="display:none;">
+        <Component id="toolsColorsController"></Component>
+    </div>
+    
+`,{
+    context:{
+        icon_projects : icon_projects_imageUrl,
+        icon_filemanager:icon_filemanager_imageUrl,
+        icon_agents : icon_agents_imageUrl,
+        icon_tools : icon_tools_imageUrl,
+        icon_apps : icon_apps_imageUrl,
+        icon_floppy : icon_floppy_imageUrl,
+        icon_settings : icon_settings_imageUrl,
+        icon_network : icon_network_imageUrl
+    }
+});
+
+
+
+
+function genToogle(name,flag_boolcb,container,controller,extra) {
+    return async function toogle() {
+        if(flag_boolcb()) {
+            console.log(name+" toogle true to false");
+            schema.el[container].style.display = "none";
+            schema.$[controller].elementsClear();
+            flag_boolcb(false);
+        } else {
+            console.log(name+" toogle false to true");
+            schema.el[container].style.display = "";
+            console.log(name);
+            extra = extra ? extra : {};
+            var ls_code = await self.props.sys.loadText(name);
+            var ls_schema = await schema.$[controller].elementSetPacketAsync(
+                `
+                <Component srcData={{this.code}} target={{this.target}} sys={{this.sys}} extra={{this.extra}}></Component>
+                `,
+                {
+                    context:{
+                        code:ls_code,
+                        target:{ $ : schema.$[controller] },
+                        sys : self.props.sys,
+                        extra
+                    }
+                }
+            );
+            flag_boolcb(true);
+        }
+    }
+}
+
+
+self.props.sys.env = {
+    cwd : self.props.sys.types.String("/",(val)=>{
+        console.log(">>evt.changed:",val);
+        events.emit("env.changed");
+    }),
+    wallpaper : self.props.sys.types.Object({
+        "type" : "none"
+    },async (val)=>{
+        console.log("WALLPAPER",val);
+        if("type" in val) {
+            if(val.type == "image") {
+                if("source" in val) {
+                    if(val.source == "idb") {
+                        if("path" in val) {
+                            console.log("VAL",val.path);
+                            var blob = await self.props.sys.loadBlob(val.path);
+                            console.log("BLOB",blob)
+                            if(blob!=null) {
+                                var imageUrl = window.URL.createObjectURL(blob);
+                                window.document.body.style.background = "url("+imageUrl+") no-repeat center center fixed";
+                                window.document.body.style.backgroundSize = "cover";
+                                window.document.body.style.height = "100%";
+                                events.emit("env.changed");
+                            }
+                        }
+                    }
+                }
+            } else if(val.type == "none") {
+                for(var key in val) {
+                    if(key != "type") {
+                        delete val[key];
+                    }
+                }
+                events.emit("env.changed");
+            }
+        }
+    })
+};
+var env_json = await self.props.sys.loadText("/sys/env.json");
+if(env_json!=null) {
+    console.log("LOAD ENV");
+    env_json = JSON.parse(env_json);
+    self.props.sys.env.cwd.cb(env_json.cwd);
+    console.log(env_json.wallpaper);
+    self.props.sys.env.wallpaper.cb(env_json.wallpaper);
+} else {
+    console.log("SET ENV");
+    var obj = {};
+    for(var key in self.props.sys.env) {
+        obj[key] = self.props.sys.env[key].value;
+    }
+    await self.props.sys.saveText("/sys/env.json",JSON.stringify(obj));
+}
+events.on("env.changed",async ()=>{
+    console.log(">> env.changed");
+    var obj = {};
+    for(var key in self.props.sys.env) {
+        obj[key] = self.props.sys.env[key].value;
+    }
+    self.props.sys.saveText("/sys/env.json",JSON.stringify(obj));
+});
+
+if("btnProjects" in schema.el) {
+    
+    schema.el.btnProjectsNew.addEventListener("click",async ()=>{
+
+        var json_str = await self.props.sys.loadText("/sys/projects.json");
+        if(json_str == null) {
+            console.error("project not correctly loaded.");
+            return;
+        }
+        var json = JSON.parse(json_str);
+
+        var name = prompt("project name:");
+        for(var x = 0; x < json.named.length;x++) {
+            if(json.named[x] == name) {
+                throw new Error(name + " already in use.");
+            }
+        }
+        console.log("new project");
+        json.named.push(name);
+        console.log("new project . push name");
+        await self.props.sys.saveText("/sys/projects.json",JSON.stringify(json));
+        console.log("new project .save projects.json");
+        var install = await self.props.sys.loadSuper("/sys/apps/filemanager/stackdb.super");
+        console.log("new project .load super /sys/apps/filemanager/stackdb.super");
+        await install(name,{recursive:true});
+        console.log("new project .install")
+        setProject(name);
+        console.log("new project .set Project");
+        var default_boot = `<div style="font-size:50px;color:var(--primary);background-color:white;padding-left:20px;" class="mx-1">
+    Project ${name}
+</div>`;
+        var parents = JSON.stringify([self.props.sys.dbName]);
+        var sample_interface = await self.props.sys.loadText("/sys/apps/filemanager/interface.value.template.super");
+        await self.props.sys.pushDb(name);
+        await self.props.sys.saveText("/sys/boot.super",default_boot);
+        await self.props.sys.saveText("/sys/projects.json",JSON.stringify({named:[]}));
+        await self.props.sys.saveText("/sys/parents.json",parents);
+        // save default interface
+        await self.props.sys.saveText("/interface.super",sample_interface);
+        await self.props.sys.popDb();
+        await self.props.sys.pushDb(name);
+        self.props.sys.toogleTerminal(true);
+        self.props.sys.open("/sys/boot.super");
+    });
+    schema.el.btnProjectsStatus.addEventListener("click",()=>{
+        alert( JSON.stringify(self.props.sys.dbStack()) );
+    });
+    schema.el.btnProjectsSystem.addEventListener("click",async ()=>{
+        while(self.props.sys.dbStack().length>1) {
+            await self.props.sys.popDb();
+        }
+        self.props.sys.open("/default.txt");
+    });
+
+    schema.$.lblProjectsSecure.elementsClear();
+    await schema.$.lblProjectsSecure.elementSetPacketAsync(`<span>secure : on</span>`);
+    schema.el.btnProjectsSecure.addEventListener("click",async ()=>{
+        var nvalue = !self.props.sys._frontSecure.value;
+        schema.$.lblProjectsSecure.elementsClear();
+        self.props.sys._frontSecure.cb(nvalue);
+        if(self.props.sys._frontSecure.cb()) {
+            await schema.$.lblProjectsSecure.elementSetPacketAsync(`<span>secure : on</span>`);
+        } else {
+            await schema.$.lblProjectsSecure.elementSetPacketAsync(`<span>secure : off</span>`);
+        }
+    });
+
+    async function setProject(name) {
+        var schema2 = await schema.$.lstProjects.elementPushPacketAsync(`
+            <span id="button" class="dropdown-item" style="cursor:pointer;">${name}</span>
+        `);
+        schema2.el.button.addEventListener("click",async ()=>{
+            await self.props.sys.pushDb(name);
+            self.props.sys.toogleTerminal(true);
+            self.props.sys.open("/sys/boot.super");
+        });
+    }
+
+    var _refreshProjects = async ()=>{
+        schema.$.lstProjects.elementsClear();
+        var json_str = await self.props.sys.loadText("/sys/projects.json");
+        if(json_str!=null) {
+            var json = JSON.parse(json_str);
+            for(var x = 0; x < json.named.length;x++) {
+                setProject(json.named[x]);
+            }
+        }
+        var stack = self.props.sys.dbStack()
+        if(stack.length>1) {
+            schema.$.hldProjectsUnload.elementsClear();
+            var schema2 = await schema.$.hldProjectsUnload.elementSetPacketAsync(`
+                <span id="btnProjectsUnload" class="dropdown-item" style="cursor:pointer;">Unload ${stack[stack.length-1]}</span>
+            `);
+            schema2.el.btnProjectsUnload.addEventListener("click",async ()=>{
+                await self.props.sys.popDb();
+                self.props.sys.open("/default.txt");
+            });
+        } else {
+            schema.$.hldProjectsUnload.elementsClear();
+        }
+    };
+    self.props.sys.events.on("db.push",_refreshProjects);
+    self.props.sys.events.on("db.pop",_refreshProjects);
+
+    await _refreshProjects();
+
+}
+
+if("btnTools" in schema.el) {
+
+    var toolsEvt = Class.create("WithEvents");
+    var toolsPack = [];
+
+    var flagToolsColors = self.props.sys.types.Boolean(false);
+    var toogleToolsColors = genToogle("/sys/apps/colors/colors.super",flagToolsColors.cb,"toolsColorsContainer","toolsColorsController");
+    toolsPack.push([flagToolsColors,toogleToolsColors]);
+    schema.el.btnToolsColors.addEventListener("click",async ()=>{
+        toolsEvt.emit("toogle",[toogleToolsColors])
+    });
+
+    var flagToolsNumbers = self.props.sys.types.Boolean(false);
+    var toogleToolsNumbers = genToogle("/sys/apps/numbers/numbers.super",flagToolsNumbers.cb,"toolsColorsContainer","toolsColorsController");
+    toolsPack.push([flagToolsNumbers,toogleToolsNumbers]);
+    schema.el.btnToolsNumbers.addEventListener("click",async ()=>{
+        toolsEvt.emit("toogle",[toogleToolsNumbers]);
+    });
+
+    toolsEvt.on("toogle",async (args)=>{
+        for(var x = 0; x < toolsPack.length;x++) {
+            if( toolsPack[x][0].cb() ) {
+                if(toolsPack[x][1] != args)
+                    await toolsPack[x][1]();
+            }
+        }
+        await args();
+    });
+
+}
+if("btnSettings" in schema.el) {
+    var flagSettings = self.props.sys.types.Boolean(false);
+    var toogleSettings = genToogle("/sys/apps/settings/settings.super",flagSettings.cb,"settingsContainer","settingsController");
+    schema.el.btnSettings.addEventListener("click",async ()=>{
+        await toogleSettings();
+    }); 
+}
+
+if("btnBackup" in schema.el) {
+    var ignore = await self.props.sys.loadSuper("/sys/backup.ignore.super",self.props.sys.sector.loader_backend);
+    schema.el.btnBackup.addEventListener("click",async ()=>{
+        self.props.sys.backup(null,null,{ignore : ignore });
+    });
+}
+
+if("btnRestore" in schema.el) {
+    schema.el.btnRestore.addEventListener("change",async (e)=>{
+        self.props.sys.restore(e);
+    });
+}
+if("btnAccount" in schema.el) {
+    var account = {};
+    Object.defineProperty(account,"block",{
+        value : function(policy) {
+            // get this machine salt
+            // unblock manually
+            // cant block already created accounts, so the "user" will need to remove account to block and loose salts
+        },
+        writeable : false
+    });
+    
+    Object.defineProperty(account,"add",{
+        value: async function({name,email,phone,password_type,password_data}) {
+            // warn about recent remove of account
+            // get this machine salt
+            // warn if it is blocked or freezed.
+            // limit account creations by (fixed number, time)? 
+            // -> register on server at same time with the hash of A=server_salt2*(name+email)*(name+phone)*(server_salt1+password_data)
+            // if not register at same time, user will not have server_salt3 to keep track of user logs. (can be hacked silentily by offline user)
+            // otherwise A = 0;
+            // dont save any user information
+            var meta = await sys.db.account.find("name",name);
+            if(meta == null) { // add new type
+                var meta_id = await sys.db.account.add({
+                    name,
+                    email,
+                    phone,
+                    password_type,
+                    password_data
+                });
+            }
+        },
+        writeable : false
+    });
+    Object.defineProperty(account,"remove",{
+        value : async function({name,email,phone}) {
+            // remove local account and files, keep track
+            // dont save any user information
+        }
+    });
+    Object.defineProperty(account,"login",{
+        value: function(mode) {
+            // execute policy of this account like encrypt decrypt whatever, or playing a game to get in
+            // warn about some invalid block
+            // send A=(server_saltLogin+server_salt3)*(server_saltLogin+*(server_salt1+password_data) ) )*(last_A+time) // get ip and time
+            // last_A = A
+            // if login twice warn by phone about how many active logins user have (panic button)
+            // execute policy
+            // if ok
+            return {
+                policy : function() { // an script saved on backend
+                    // execute current policy
+                    // like password for action, or extra password
+                },
+                action : function(_type,_name,_args) { // backup, recover, extra clues for id.
+                    // execute policy
+                    // slow write 1 write by N minutes, keep backup of day
+                },
+                changePassword : function() {
+                    // execute policy
+                    // send (server_salt3+sever_salt2)*(server_salt1+password_data) )
+                },
+                recoverPassword : function() {
+                    // execute policy
+                    // only with name + email and confirmed by phone (1 recover per day, second recover in same day block for 1 day)
+                },
+                logout : function() {
+                    // execute policy
+                    // send A=(server_saltLogin+server_salt2)*(last_A+time)
+                    // last_A = A
+                    // if logout twice warn about how many active logins user have
+                }
+            }
+        },
+        writeable : false
+    });
+    Object.defineProperty(account,"panic",{
+        value : function({name,email,phone,password_type,password_data}) {
+            // block any change. freeze until voice unfreeze.
+            // server_salt(name+email)*(name+phone)*(password_data)
+            // dont save any user information
+        },
+        writeable : false
+    });
+    // account delete is manual by voice. or by company public warn.
+    // any deletion on server goes to trash for 1 week, then automatically deleted if not recovered. recovery takes same time of delete waiting. 
+    // can force delete of all trash by (server_salt1+password_data)*(last_A+time)
+
+    Object.defineProperty(self.props.sys,"account",{
+        value: account,
+        writeable : false
+    });
+
+    var flagAccount = self.props.sys.types.Boolean(false);
+    var toogleAccount = genToogle("/sys/apps/accountmanager/accountmanager.super",flagSettings.cb,"accountContainer","accountController");
+    schema.el.btnAccount.addEventListener("click",async ()=>{
+        await toogleAccount();
+    });
+}
+
+if("btnFiles" in schema.el) {
+    var file_schema = await self.props.sys.sector.file_navigator.$.elementSetPacketAsync(
+        `
+        <div id="filesContainer" style="display:none" class="mt-2">
+            <Component id="filesController"></Component>
+            <Component id="filesControllerAfter"></Component>
+        </div>
+        `
+    );
+    
+    function genToogle2(name,flag_boolcb,container,controller,extra) {
+        return async function toogle() {
+            if(flag_boolcb()) {
+                console.log(name+" toogle true to false");
+                file_schema.el[container].style.display = "none";
+                file_schema.$[controller].elementsClear();
+                flag_boolcb(false);
+            } else {
+                console.log(name+" toogle false to true");
+                file_schema.el[container].style.display = "";
+                console.log(name);
+                extra = extra ? extra : {};
+                var ls_code = await self.props.sys.loadText(name);
+                var ls_schema = await file_schema.$[controller].elementSetPacketAsync(
+                    `
+                    <Component srcData={{this.code}} target={{this.target}} sys={{this.sys}} extra={{this.extra}}></Component>
+                    `,
+                    {
+                        context:{
+                            code:ls_code,
+                            target:{ $ : file_schema.$[controller] },
+                            sys : self.props.sys,
+                            extra
+                        }
+                    }
+                );
+                flag_boolcb(true);
+            }
+        }
+    }
+    console.log("LOADED FILES");
+    var flagFiles = self.props.sys.types.Boolean(false);
+    var toogleFiles = genToogle2("/sys/apps/filemanager/filemanager.super",flagFiles.cb,"filesContainer","filesController",{
+        path:self.props.sys.env.cwd,
+        afterController : {$ : file_schema.$.filesControllerAfter }
+    });
+    schema.el.btnFiles.addEventListener("click",async function () {
+        if(self.props.sys.file) {
+            console.log("files restore:",self.props.sys.file)
+            var backup_file = self.props.sys.file;
+            await toogleFiles();
+            self.props.sys.loadText(backup_file);
+        } else {
+            await toogleFiles();
+        }
+    });
+    var refresh = false;
+    var retry = false;
+    var retry_count = 0;
+    async function refresh_filemanager() {
+        console.log("REFRESH FILEMANAGER");
+        if(!refresh) {
+            refresh = true;
+            try {
+                if(flagFiles.cb()) {
+                    var ls_code = await self.props.sys.loadText("/sys/apps/filemanager/filemanager.super");
+                    await new Promise((resolve)=>{
+                        setTimeout(()=>{
+                            resolve();
+                        },200);
+                    });
+                    retry = false;
+                    file_schema.$.filesController.elementsClear();
+                    await file_schema.$.filesController.elementSetPacketAsync(
+                        `
+                        <Component srcData={{this.code}} target={{this.target}} sys={{this.sys}} extra={{this.extra}}></Component>
+                        `,
+                        {
+                            context:{
+                                code:ls_code,
+                                target:{ $ : file_schema.$.filesController },
+                                sys : self.props.sys,
+                                extra : {path : self.props.sys.env.cwd,afterController : {$ : file_schema.$.filesControllerAfter } }
+                            }
+                        }
+                    );
+                }
+            } catch(e) {
+                console.log(e);
+            }
+            if(retry) {
+                retry = false;
+                setTimeout(async ()=>{
+                    refresh = false;
+                    retry = false;
+                    if(retry_count<10) {
+                        retry_count+= 1;
+                    }
+                    await refresh_filemanager();
+                    console.log({refresh,retry});
+                },100 + retry_count*3000);
+            } else {
+                retry_count = 0;
+                refresh = false;
+                console.log({refresh,retry});
+            }
+        } else {
+            console.log("ENQUEUE REFRESH FILEMANAGER");
+            retry = true;
+            console.log({refresh,retry});
+        }
+    }
+
+
+    // on update files in another tab, sync.
+    
+    function savePositions() {
+        if( self.props.sys.file != "") {
+            var cpos = self.props.sys.editor.getPosition();
+            cachedPositions[
+                self.props.sys.file
+            ] = {
+                cpos : cpos,
+                spos : [
+                    self.props.sys.editor.getScrollLeft(),
+                    self.props.sys.editor.getScrollTop()
+                ]
+            };
+            console.log(cachedPositions[ self.props.sys.file ]);
+        }
+    }
+
+    function loadPositions() {
+        if(self.props.sys.file in cachedPositions) {
+            console.log("LOADING POSITIONS");
+            var m = cachedPositions[self.props.sys.file];
+            console.log(m);
+            self.props.sys.editor.setPosition( m.cpos );
+            console.log("set position");
+            self.props.sys.editor.setScrollLeft( m.spos[0] );
+            console.log("set scroll1");
+            self.props.sys.editor.setScrollTop( m.spos[1] );
+            console.log("set scroll2");
+        }
+    }
+    
+    self.props.sys.editor.onKeyDown(function() {
+        savePositions();
+    });
+    self.props.sys.editor.onMouseDown(function() {
+        savePositions();
+    });
+
+    const livetabsChannel = new BroadcastChannel('livetabs');
+    setInterval(()=>{
+        livetabsChannel.postMessage({event:'ping'});
+    },1000);
+    
+    livetabsChannel.addEventListener("message",async function (ev) { 
+        if(ev.data.event == "ping") {
+            //console.log("ping");2
+        } else if(ev.data.event == "file.changed2") {
+            // udpate file
+            savePositions();
+            if(self.props.sys.file == "/sys/boot.super") {
+                window.localStorage.setItem("extra_boot",JSON.stringify({
+                    editor:true,
+                    file:self.props.sys.file,
+                    pos:cachedPositions[self.props.sys.file]
+                }));
+                window.location.reload(true);
+                return;
+            }
+            console.log("receive tab of:",self.props.sys.file);
+            await self.props.sys.open(self.props.sys.file);
+            loadPositions();
+        } else {
+            console.log("livetabs",ev); 
+        }
+    });
+
+    
+    events.on("file.changed2",()=>{ // tracks saveText update, saveBlob update
+        livetabsChannel.postMessage({
+            event : 'file.changed2'
+        });
+    });
+    
+    events.on("file.changed",()=>{ // only tracks pushdb,popdb, saveText add, saveBlob add, delete, loadText, loadBlob
+        livetabsChannel.postMessage({
+            event : 'file.changed'
+        });
+        // if track event if may not need to reprint component, 
+        // so there is no ls and no clear on refresh folder
+        // but it can be optimized if mount folders and cache mount.
+        // flag as invalid to reload if needed (not chaching update)
+        // and a service to cache every 10min.
+        console.log(">> file.changed");
+        refresh_filemanager();
+    });
+
+    window.addEventListener("keydown",async (e)=>{
+        if(self.props.sys.keyboard.ctrl && e.keyCode == 49) {
+            e.preventDefault();
+            await toogleFiles();
+            return false;
+        }
+    });
+
+    self.props.sys.editor.loadPositions = loadPositions;
+
+}
+
+// first agent, register all
+events.on("clock.second",()=>{
+    console.log("seconds iddle");
+
+});
+
+var t = await self.props.sys.loadText("/apps/main.super");
+if(t!=null) {
+    setTimeout(()=>{
+        console.log("BOOT2");
+        //self.props.sys.editor.updateOptions({ readOnly: true });
+        //self.props.sys.loadSuper("/apps/main.super",{},self.props.sys.sector.ui);
+    },300000);
+}
+
+console.log("OKKKKKKKKK");
+boot = false;
+if(!self.props.sys._frontSecure.value) {
+    self.props.sys._frontSecure.cb(true);
+}
+
+var rnd = Math.random();
+events.on("boot.finish",async ()=>{
+    self.props.sys.toogleTerminal(config.editor);
+    var extra_boot = window.localStorage.getItem("extra_boot");
+    if(extra_boot!=null) {
+        var json = JSON.parse(extra_boot);
+        if(json.editor) {
+            self.props.sys.toogleTerminal(true);
+            await self.props.sys.open(json.file);
+            cachedPositions[
+                self.props.sys.file
+            ] = json.pos;
+            self.props.sys.editor.loadPositions();
+        }
+        window.localStorage.removeItem("extra_boot");
+    }
+});
+events.emit("boot.user.finish",[rnd]);
+{{"</" + "script>"}}
+    */
+   
+    /*
+        >>sys.loadText("/sys/apps/filemanager/filemanager.super");
+        <script>
+            var self = this;
+            var sys = this.props.sys;
+            var t0 = window.performance.now();
+            var base_files = await sys.ls();
+            var t1 = window.performance.now();
+            console.log("LS sys.ls",t1-t0);
+            var folders_arr = [];
+            var folders_obj = {
+                type : "folder",
+                path : "/",
+                name : "",
+                contents : {},
+                parent : null
+            };
+            var breadcrumb = [];
+            var current_folder = folders_obj;
+            var in_refresh = {
+                check : false,
+                request_cancel : false,
+                request_cancel_done : false
+            };
+            var workspace = {
+                type : "folder",
+                path : "",
+                contents : {}
+            }
+            var sel_folder = null;
+            if(self.props.extra.path.value=="/") {
+                sel_folder = folders_obj;
+            }
+        
+        
+            var t2 = window.performance.now();
+            base_files.sort((a,b)=>{
+                return a.name.localeCompare(b.name);
+            });
+            
+            var t3 = window.performance.now();
+            console.log("LS base_files.sort",t3-t2);
+            for(var x = 0; x < base_files.length;x++) {
+                var parts = base_files[x].name.split("/");
+                var s1 = [folders_obj];
+                var s2 = [folders_obj];
+                var wsp = false;
+                var parent = null;
+                for(var y = 0; y < parts.length;y++) {
+                    if(y==0 && parts[0] == "") continue;
+                    else if(wsp || y==0 && parts[0] != "") {
+                        wsp = true;
+                        var p2 = s2[s2.length-1];
+                        var p21 = null;
+                        if(parts[y] in p2.contents)
+                            p21 = p2.contents[parts[y]];
+                        else
+                            p21 = p2.contents[parts[y]] = { contents : {} };
+                        if(y==parts.length-1) {
+                            p21.type = "file";
+                            p21.file = base_files[x];
+                            p21.name = parts[y];
+                            p21.parent = p2;
+                        } else {
+                            p21.type = "folder";
+                            p21.name = parts[y];
+                            p21.parent = p2;
+                            s2.push( p21 );
+                        }
+                    } else if(y>0) {
+                        var p1 = s1[s1.length-1];
+                        var p11 = null;
+                        if(parts[y] in p1.contents)
+                            p11 = p1.contents[parts[y]];
+                        else
+                            p11 = p1.contents[parts[y]] = { contents : {} };
+                        if(y == parts.length-1) {
+                            p11.type = "file";
+                            p11.name = parts[y];
+                            p11.file = base_files[x];
+                            p11.parent = p1;
+                        } else {
+                            p11.type = "folder";
+                            p11.name = parts[y];
+                            p11.parent = p1;
+                            s1.push( p11 );
+                        }
+                    }
+                }
+            }
+        
+            var tries = 0;
+            function try_sel_folder() {
+                var sel_parts = null;
+                try {
+                    tries++;
+                    if(tries >=3) {
+                        return false;
+                    }
+                    //console.log(">>CURRENT FOLDER:",self.props.extra.path.value);
+                    sel_parts = self.props.extra.path.value.split("/");
+                    if(sel_parts.length == 2 && sel_parts[0] == "" && sel_parts[1] == "") sel_parts.pop();
+                    var wsp = false;
+                    var p1 = folders_obj;
+                    for(var x =0; x < sel_parts.length;x++) {
+                        if(x==0 && sel_parts[0] == "") {
+                            sel_folder = p1;
+                            continue;
+                        } else if(wsp || x==0 && sel_parts[0] != "") {
+                            wsp = true;
+                            if(sel_parts[x] in p1.contents) {
+                                p1 = p1.contents[ sel_parts[x] ];
+                                if(x< sel_parts.length-1) breadcrumb.push(p1);
+                            } else {
+                                self.props.extra.path.cb("/");
+                                throw new Error("directory was removed.");
+                            }
+                        } else if(x>0) {
+                            if(sel_parts[x] in p1.contents) {
+                                p1 = p1.contents[ sel_parts[x] ];
+                                if(x< sel_parts.length-1) breadcrumb.push(p1);
+                            } else {
+                                self.props.extra.path.cb("/");
+                                throw new Error("directory was removed.");
+                            }
+                        }
+                        if(x == sel_parts.length-1) {
+                            if(p1.type == "folder") {
+                                sel_folder = p1;
+                            } else {
+                                breadcrumb = [];
+                            }
+                        }
+                    }
+                    return true;
+                } catch(e) {
+                    breadcrumb = [];
+                    return try_sel_folder();
+                }
+            }
+            var t4 = window.performance.now();
+        
+        
+        
+            if(!try_sel_folder()) {
+                throw new Error("fatal error on selecting folder.");
+            }
+            
+            async function setFolderHandler(schema,folder,options) {
+                schema.el.item.addEventListener("mouseover",()=>{
+                    schema.el.item.style.backgroundColor = "black";
+                    schema.el.item.style.color = "white";
+                });
+                schema.el.item.addEventListener("mouseleave",()=>{
+                    schema.el.item.style.backgroundColor = "";
+                    schema.el.item.style.color = "";
+                });
+                schema.el.item.addEventListener("focus",()=>{
+                    schema.el.item.style.backgroundColor = "black";
+                    schema.el.item.style.color = "white";
+                });
+                schema.el.item.addEventListener("blur",()=>{
+                    schema.el.item.style.backgroundColor = "";
+                    schema.el.item.style.color = "";
+                });
+                schema.el.item.addEventListener("click",async ()=>{
+                    if(in_refresh.check) {
+                        in_refresh.request_cancel_done = false;
+                        in_refresh.request_cancel = true;
+                        function fcheck() {
+                            return in_refresh.request_cancel_done;
+                        }
+                        await new Promise((resolve,reject)=>{
+                            setInterval(()=>{
+                                if(fcheck()) {
+                                    resolve();
+                                }
+                            },50);
+                        });
+                        in_refresh.request_cancel = false;
+                        in_refresh.request_cancel_done = false;
+                    }
+                    current_folder = folder;
+                    var ta0 = window.performance.now();
+                    breadcrumb.push(folder);
+                    if(options && "special" in options && options.special == "up") {
+                        breadcrumb.pop();
+                        breadcrumb.pop();
+                    }
+                    await refresh_breadcrumb();
+                    await refresh(folder);
+                    var ta1 = window.performance.now();
+                    console.log("LS refresh",ta1-ta0);
+                });
+            }
+            async function setFileHandler(schema,file,preview) {
+        
+                schema.el.item.addEventListener("mouseover",()=>{
+                    schema.el.item.style.backgroundColor = "black";
+                    schema.el.item.style.color = "white";
+                });
+                schema.el.item.addEventListener("mouseleave",()=>{
+                    schema.el.item.style.backgroundColor = "";
+                    schema.el.item.style.color = "";
+                });
+                schema.el.item.addEventListener("focus",()=>{
+                    schema.el.item.style.backgroundColor = "black";
+                    schema.el.item.style.color = "white";
+                });
+                schema.el.item.addEventListener("blur",()=>{
+                    schema.el.item.style.backgroundColor = "";
+                    schema.el.item.style.color = "";
+                });
+                var ext = file.name.split(".").pop();
+                if(ext == "82c1e8") {
+                    function secure_string(str) {
+                        var sb = [];
+                        for(var x = 0; x < str.length;x++) {
+                            if(str.indexOf("<br/>",x)==x) {
+                                x += 4;
+                                sb.push("<br/>");
+                            } else if(str.charAt(x) == ">") {
+                                sb.push("&");
+                                sb.push("#");
+                                sb.push("6");
+                                sb.push("2");
+                                sb.push(";");
+                            } else if(str.charAt(x) == "<") {
+                                
+                                sb.push("&");
+                                sb.push("#");
+                                sb.push("6");
+                                sb.push("0");
+                                sb.push(";");
+                            } else {
+                                sb.push(str.charAt(x));
+                            }
+                        }
+                        var r = sb.join("");
+                        return r;
+                    }
+                    
+                    schema.$.preview.elementsClear();
+                    var schema_display = await schema.$.preview.elementPushPacketAsync(`
+                        <div id="display" style="background-color:var(--primary);color:white;text-align:left;padding-left:10px;padding-right:10px;"></div>
+                    `)
+                    var display_holder = {};
+                    var _interface = await self.props.sys.loadSuper(file.name,{filename:file.name,display:display_holder},{$:schema_display.$.display});
+                    var _type = Object.prototype.toString.apply(_interface);
+                    if(_type == "[object AsyncFunction]") {
+                        var schema2 = await schema.$.preview.elementPushPacketAsync(`
+                            <div style="display:flex;">
+                                <button id="btnPlay" style="flex:1;">play</button>
+                            </div>
+                        `);
+        
+                        Object.defineProperty(display_holder,"value",{
+                            value : async function setDisplay(str) {
+                                if(str == "" || str == null || str == undefined) {
+                                    schema_display.$.display.elementsClear();
+                                } else {
+                                    if(str.length > 65535) str = str.substring(0,65536);
+                                    schema_display.$.display.elementSetPacketAsync(`<div>` + secure_string(str) + `</div>`);
+                                }
+                            },
+                            writeable : false
+                        });
+        
+                        schema2.el.btnPlay.addEventListener("click",async ()=>{
+                            await _interface();
+                        });
+                        if("___splash___" in _interface) {
+                            var _type = Object.prototype.toString.apply(_interface.___splash___);
+                            _interface.___splash___();
+                        }
+                    } else if(_type == "[object Function]") {
+                        var schema2 = await schema.$.preview.elementPushPacketAsync(`
+                            <div style="display:flex;">
+                                <button id="btnPlay" style="flex:1;">play</button>
+                            </div>
+                        `);
+                        Object.defineProperty(display_holder,"value",{
+                            value : async function setDisplay(str) {
+                                if(str == "" || str == null || str == undefined) {
+                                    schema_display.$.display.elementsClear();
+                                } else {
+                                    if(str.length > 65535) str = str.substring(0,65536);
+                                    schema_display.$.display.elementSetPacketAsync(`<div>` + secure_string(str) + `</div>`);
+                                }
+                            },
+                            writeable : false
+                        });
+                        schema2.el.btnPlay.addEventListener("click",()=>{
+                            _interface();
+                        });
+                        if("___splash___" in _interface) {
+                            _interface.___splash___();
+                        }
+                    } else if(_type == "[object Object]") {
+                        var schema2 = await schema.$.preview.elementPushPacketAsync(`
+                            <div style="display:flex;">
+                                <div id="list" style="flex:1;display:flex;flex-wrap: wrap;"></div>
+                            </div>
+                        `);
+                        
+                        Object.defineProperty(display_holder,"value",{
+                            value : async function setDisplay(str) {
+                                if(str == "" || str == null || str == undefined) {
+                                    schema_display.$.display.elementsClear();
+                                } else {
+                                    if(str.length > 65535) str = str.substring(0,65536);
+                                    schema_display.$.display.elementSetPacketAsync(`<div>` + secure_string(str) + `</div>`);
+                                }
+                            },
+                            writeable : false
+                        });
+        
+                        async function setItem(base,key) {
+                            var name = secure_string(key);
+                            if(name.length>64) return;
+                            var rnd = parseInt(Math.random()*20);
+                            var sb = [];
+                            for(var x = 0; x < rnd;x++) {
+                                sb.push(`<span id="mock_${x}"></span>`);
+                            }
+                            var itemSchema = await schema2.$.list.elementPushPacketAsync(`
+                                ${sb.join("")}
+                                <button id="btn" style="flex:1;"><span>`+name+`</span></button>
+                            `);
+                            itemSchema.el.btn.addEventListener("contextmenu",(e)=>{
+                                e.preventDefault();
+                                return false;
+                            });
+                            itemSchema.el.btn.addEventListener("mousedown",(e)=>{
+                                console.log("MDOWN",e);
+                                if(e.button == 2) {
+        
+                                }
+                            });
+                            itemSchema.el.btn.addEventListener("mouseup",(e)=>{
+                                console.log("MUP",e);
+                                if(e.button == 2) {
+                                    if(!("mocks" in self.props.sys)) self.props.sys.mocks = {};
+                                    var t = Object.prototype.toString.apply(base[key]);
+                                    if(t == "[object AsyncFunction]") {
+                                        self.props.sys.mocks[key] = async function() {
+                                            await base[key].bind(base)();
+                                            if("___update___" in base) {
+                                                var _type = Object.prototype.toString.apply(base.___update___);
+                                                var ninterface = null;
+                                                if(_type == "[object Function]") {
+                                                    ninterface = base.___update___.bind(base)();
+                                                } else if(_type == "[object AsyncFunction]") {
+                                                    ninterface = await base.___update___.bind(base)();
+                                                }
+                                                schema2.$.list.elementsClear();
+                                                var k = 0;
+                                                for(var key2 in ninterface) {
+                                                    if(key2 == "___update___" || key2 == "___splash___") {
+                                                    } else {
+                                                        await setItem(ninterface,key2);
+                                                        k++;
+                                                        if(k == 16) {
+                                                            break;
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    } else if(t == "[object Function]") {
+                                        self.props.sys.mocks[key] = async function() {
+                                            base[key].bind(base)();
+                                            if("___update___" in base) {
+                                                var _type = Object.prototype.toString.apply(base.___update___);
+                                                var ninterface = null;
+                                                if(_type == "[object Function]") {
+                                                    ninterface = base.___update___.bind(base)();
+                                                } else if(_type == "[object AsyncFunction]") {
+                                                    ninterface = await base.___update___.bind(base)();
+                                                }
+                                                schema2.$.list.elementsClear();
+                                                var k = 0;
+                                                for(var key2 in ninterface) {
+                                                    if(key2 == "___update___" || key2 == "___splash___") {
+                                                    } else {
+                                                        await setItem(ninterface,key2);
+                                                        k++;
+                                                        if(k == 16) {
+                                                            break;
+                                                        }
+                                                    }
+                                                }
+        
+                                            }
+                                            
+                                        }
+                                    }
+                                }
+                            });
+                            itemSchema.el.btn.addEventListener("click",async ()=>{
+                                var t = Object.prototype.toString.apply(base[key]);
+                                if(t == "[object AsyncFunction]") {
+                                    await base[key]();
+                                } else if(t == "[object Function]") {
+                                    base[key]();
+                                } else if(t == "[object String]") {
+                                    await self.props.sys.loadSuper( base[key], {}, {$:schema2.$.display} );
+                                }
+                                if("___update___" in base) {
+                                    var ninterface = base.___update___();
+                                    schema2.$.list.elementsClear();
+                                    var k = 0;
+                                    for(var key2 in ninterface) {
+                                        if(key2 == "___update___" || key2 == "___splash___") {
+                                        } else {
+                                            setItem(ninterface,key2);
+                                            k++;
+                                            if(k == 16) {
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+                            });
+                        }
+                        var k = 0;
+                        for(var key in _interface) {
+                            if(key == "___update___" || key == "___splash___") {
+                            } else {
+                                setItem(_interface,key);
+                                k++;
+                                if(k == 16) {
+                                    break;
+                                }
+                            }
+                        }
+                        if("___splash___" in _interface) {
+                            _interface.___splash___();
+                        }
+                    }
+                }
+                schema.el.item.addEventListener("click",async ()=>{
+                    var ext = file.name.split(".").pop();
+                    if(ext == "js" || ext == "super" || ext == "backup" || ext == "css" || ext == "txt" || ext == "svg" || ext == "json") {
+                        var text = await sys.loadText(file.name);
+                        var oldModel = sys.editor.getModel();
+                        var _type = "plaintext";
+                        if(file.name.indexOf(".")!=-1) {
+                            var fileparts = file.name.split(".");
+                            var ext = fileparts.pop();
+                            if(ext == "backup") {
+                                var ext2 = fileparts.pop();
+                                var lang = {
+                                    "js" : "javascript",
+                                    "html" : "html",
+                                    "super" : "html",
+                                    "css" : "css",
+                                    "json" : "json"
+                                };
+                                if(ext2 in lang) {
+                                    _type = lang[ext2];
+                                }
+                            } else {
+                                var lang = {
+                                    "js" : "javascript",
+                                    "html" : "html",
+                                    "super" : "html",
+                                    "css" : "css",
+                                    "json" : "json"
+                                };
+                                if(ext in lang) {
+                                    _type = lang[ext];
+                                }
+                            }
+                        }
+                        var newModel = monaco.editor.createModel(text, _type);
+                        sys.editor.setModel(newModel);
+                        if (oldModel) oldModel.dispose();
+                        // open in editor
+                        sys.file = file.name;
+                        sys.sector.msg.$.elementSetPacketAsync(`<div style="font-size:30px;">${file.name}</div>`);
+                        //sys.editor.setValue(text);
+                    } else if(ext == "82c1e8") {
+                        
+                    } else if(ext == "mp3") {
+                        // if you set to preview then on open another file, it will replace by event file.changed.
+                        var blob = await sys.loadBlob(file.name);
+                        var url = (window.URL || window.webkitURL).createObjectURL(blob);
+                        var schema_run = await self.props.extra.afterController.$.elementSetPacketAsync(`
+                            <audio id="audio" controls>
+                                <source src="`+url+`" type="audio/webm">
+                                Your browser does not support the audio tag.
+                            </audio>
+                        `);
+                        schema_run.el.audio.play();
+                    } else if(ext == "webm") {
+                        var blob = await sys.loadBlob(file.name);
+                        var schema_run = await self.props.extra.afterController.$.elementSetPacketAsync(`
+                            <div>
+                                <video id="video" controls="true"></video>
+                            </div>
+                        `);
+                        schema_run.el.video.src = (window.URL || window.webkitURL).createObjectURL(blob);
+                        schema_run.el.video.style.width = "100%";
+                        schema_run.el.video.play();
+                        
+                    } else {
+                        console.error("unkown file extension");
+                    }
+        
+                });
+            }
+            this.props.target.$.elementsClear();
+            var UI_TOPBAR_SUPER = await this.props.sys.loadText("/sys/ui/topBar.super");
+            var schema = await this.props.target.$.elementPushPacketAsync(`
+                <Component id="topbar" srcData={{ this.UI_TOPBAR_SUPER }} caption="Files"></Component>
+                <div style="display:flex;background-color:white;color:black;padding:10px;">
+                    <Component id="breadcrumb"></Component>
+                </div>
+                <div style="border-left:solid 1px #000;border-right:solid 1px #000;border-bottom:solid 1px #000;">
+                    <Component id="control"></Component>
+                </div>
+                <div style="border-left:solid 1px #000;border-right:solid 1px #000;border-bottom:solid 1px #000;">
+                    <Component id="preview"></Component>
+                </div>
+            `,{context:{UI_TOPBAR_SUPER}});
+            var schema_topbar = await schema.exports.topbar.$.elementSetPacketAsync(`
+                <div><button id="btnBackup" class="btn btn-primary m-1">Backup</button></div>
+                <div>
+                    <button class="btn btn-primary m-1" style="position:relative;">
+                        Restore
+                        <input type="file" id="btnRestore" value="restore" style="position:absolute;left:0px;top:0px;width:74px;height:40px;opacity:0.1;"/>
+                    </button>
+                </div>
+            `);
+            
+            schema_topbar.el.btnBackup.addEventListener("click",async ()=>{
+                var path = self.props.extra.path.cb();
+                var name = "root";
+                if(path != "/") {
+                    name = path.split("/").pop();
+                }
+                var ignore = await self.props.sys.loadSuper("/sys/backup.ignore.super",self.props.sys.sector.loader_backend);
+                self.props.sys.backup(name,self.props.extra.path.cb(),{ignore : ignore });
+            });
+            schema_topbar.el.btnRestore.addEventListener("change",async (e)=>{
+                self.props.sys.restore(e,self.props.extra.path.cb());
+            });
+            
+            async function refresh(cur) {
+                in_refresh.check = true;
+                schema.$.control.elementsClear();
+                if(!cur) {
+                    cur = current_folder;
+                }
+                
+        
+                var icon_folder_blob1 = await self.props.sys.loadText("/sys/apps/filemanager/assets/svg/gnome-folder.svg");
+                var icon_folder_imageUrl = window.URL.createObjectURL(new Blob([icon_folder_blob1],{type: 'image/svg+xml'}));
+        
+                if(cur.parent) {
+                    
+                    var schema2 = await schema.$.control.elementPushPacketAsync(`
+                        <button id="item" style="display:block;width:100%;cursor:pointer;">
+                            <div style="display:flex;">
+                                <div>
+                                    <img src={{this.imageUrl}} />
+                                </div>
+                                <div style="flex:1;padding-left:40px;text-align:left;">..</div>
+                                <div style="flex:1;">folder</div>
+                            </div>
+                        </button>
+                    `,{context:{imageUrl:icon_folder_imageUrl}});    
+                    setFolderHandler(schema2,cur.parent,{special:"up"});
+                }
+                
+                var folders = [];
+                for(var key in cur.contents) {
+                    if(cur.contents[key].type == "folder") {
+                        folders.push(cur.contents[key]);
+                    }
+                }
+                folders.sort((a,b)=>{
+                    return a.name.localeCompare(b.name);
+                });
+        
+                
+                
+        
+        
+                for(var x = 0; x < folders.length;x++) {
+                    await new Promise((resolve)=>{
+                        setTimeout(async ()=>{
+                            var schema2 = await schema.$.control.elementPushPacketAsync(`
+                                <button id="item" style="display:block;width:100%;cursor:pointer;">
+                                    <div style="display:flex;">
+                                        <div>
+                                            <img src={{this.imageUrl}} />
+                                        </div>
+                                        <div style="flex:1;padding-left:40px;text-align:left;">${folders[x].name}</div>
+                                        <div style="padding-left:40px;padding-right:40px;">folder</div>
+                                    </div>
+                                </button>
+                            `,{context:{imageUrl:icon_folder_imageUrl}});    
+                            setFolderHandler(schema2,folders[x]);
+                            resolve();
+                        },1);
+                    });
+                    if(in_refresh.request_cancel) {
+                        in_refresh.request_cancel_done = true;
+                        in_refresh.request_cancel = false;
+                        in_refresh.check = false;
+                        return;
+                    }
+                }
+                var files = [];
+                for(var key in cur.contents) {
+                    if(cur.contents[key].type == "file") {
+                        files.push(cur.contents[key]);
+                    }
+                }
+                files.sort((a,b)=>{
+                    return a.name.localeCompare(b.name);
+                });
+                
+                var icon_files_blob2 = await self.props.sys.loadText("/sys/apps/filemanager/assets/svg/gnome-text-x-generic.svg");
+                var icon_files_imageUrl = window.URL.createObjectURL(new Blob([icon_files_blob2],{type: 'image/svg+xml'}));
+        
+                for(var x = 0; x < files.length;x++) {
+                    
+                    await new Promise((resolve)=>{
+                        setTimeout(async ()=>{
+        
+                            var ext = files[x].name.split('.').pop().toLowerCase();        
+                            //console.error(files[x].file,files[x].name);
+                            if(ext=='png' || ext == 'webp') {
+                                var path = self.props.extra.path.cb();
+                                if(path.charAt(path.length-1)!="/") path = path + "/";
+                                console.log(path + files[x].name);
+                                var blob = await self.props.sys.loadBlob(path + files[x].name);
+                                var imageUrl = window.URL.createObjectURL(blob);
+                                var schema2 = await schema.$.control.elementPushPacketAsync(`
+                                    <button id="item" style="display:block;width:100%;cursor:pointer;">
+                                        <div style="display:flex;">
+                                            <div>
+                                                <img src={{this.imageUrl}} />
+                                            </div>
+                                            <div style="flex:1;padding-left:40px;text-align:left;line-height:42px;">${files[x].name}</div>
+                                        </div>
+                                        <div style="paddingh-left:80px;margin-top:10px;margin-bottom:10px;"><img src={{this.thumbnail}} width="100%" height="128" style="max-width:228px;"/></div>
+                                    </button>
+                                `,{context:{imageUrl:icon_files_imageUrl,thumbnail:imageUrl}});
+                                setFileHandler(schema2,files[x].file);
+                            } else if(ext == '82c1e8') {
+                                
+                                var schema2 = await schema.$.control.elementPushPacketAsync(`
+                                    <button id="item" style="display:block;width:100%;cursor:pointer;">
+                                        <div style="display:flex;">
+                                            <div>
+                                                <img src={{this.imageUrl}} />
+                                            </div>
+                                            <div style="flex:1;padding-left:40px;text-align:left;line-height:42px;">${files[x].name}</div>
+                                        </div>
+                                        <div style="padding-left:80px;margin-top:10px;margin-bottom:10px;">
+                                            <Component id="preview"></Component>
+                                        </div>
+                                    </button>
+                                `,{context:{imageUrl:icon_files_imageUrl}});
+                                setFileHandler(schema2,files[x].file);
+                            } else {
+        
+                                var schema2 = await schema.$.control.elementPushPacketAsync(`
+                                    <button id="item" style="display:block;width:100%;cursor:pointer;">
+                                        <div style="display:flex;">
+                                            <div>
+                                                <img src={{this.imageUrl}} />
+                                            </div>
+                                            <div style="flex:1;padding-left:40px;text-align:left;line-height:42px;">${files[x].name}</div>
+                                            <div style="padding-left:40px;padding-right:40px;line-height:42px;">${files[x].file.type}</div>
+                                        </div>
+                                    </button>
+                                `,{context:{imageUrl:icon_files_imageUrl}});
+                                setFileHandler(schema2,files[x].file,{$:schema.$.preview});
+                            }
+                            resolve();
+                        },1);
+                    });
+                    if(in_refresh.request_cancel) {
+                        in_refresh.request_cancel_done = true;
+                        in_refresh.request_cancel = false;
+                        in_refresh.check = false;
+                        return;
+                    }
+                }
+                in_refresh.check = false;
+            }
+            
+            async function refresh_breadcrumb() {
+                schema.$.breadcrumb.elementsClear();
+                
+                //self.props.extra.path.value
+                var sb = [];
+                if(breadcrumb.length == 0) {
+                    await schema.$.breadcrumb.elementPushPacketAsync("/");    
+                }
+                for(var x = 0; x < breadcrumb.length;x++) {
+                    if(x==0 && breadcrumb[x].name == "" && breadcrumb.length==1) {
+                        await schema.$.breadcrumb.elementPushPacketAsync("/");    
+                    }
+                    if(x==0 && breadcrumb[x].name == "") continue;
+                    await schema.$.breadcrumb.elementPushPacketAsync("/");
+                    sb.push("/");
+                    await schema.$.breadcrumb.elementPushPacketAsync(breadcrumb[x].name);
+                    sb.push(breadcrumb[x].name);
+                }
+                var path = sb.join("");
+                if(path == "") path = "/";
+                if(path != "/" && path.length>1 && path.substring(path.length-1) == "/") path = path.substring(0,path.length-2);
+                self.props.extra.path.cb(path);
+            }
+        
+            var t5 = window.performance.now();
+            console.log("LS try_selectfolder",t5-t4);
+            breadcrumb.push(sel_folder);
+            await refresh_breadcrumb();
+            await refresh(sel_folder);
+        
+            
+            var t6 = window.performance.now();
+            console.log("LS refresh",t6-t5);
+        
+        {{"</"+"script>"}}
+    */
+
+    // end of app.html
+</script>

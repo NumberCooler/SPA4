@@ -1,0 +1,83 @@
+<!doctype html>
+<html>
+    <head>
+        <script>
+            {
+                let math = Math;
+                Object.defineProperty(window,"Math",{
+                    value : math,
+                    writeable : false
+                });
+                let rnd = Math.random;
+                Object.defineProperty(Math,"random",{
+                    get : ()=>{ return rnd.bind(Math); },
+                    writeble:false
+                });
+
+                let cl = console.log;
+                Object.defineProperty( console, "log", {
+                    get : () => { return cl.bind(console); },
+                    writeable : false
+                });
+                let ci = console.info;
+                Object.defineProperty( console, "info", {
+                    get : () => { return ci.bind(console); },
+                    writeable : false
+                });
+
+                let e = window.eval;
+                Object.defineProperty( window, "eval", {
+                    get : () => { 
+                        //console.error("eval");
+                        return e; 
+                    },
+                    writeable : false
+                });
+            }
+        </script>
+
+		<meta charset="utf-8"/>
+		<script src="/js/core/import.js"></script>
+        <script src="/js/core/core.js"></script>
+        <script src="/js/core/SHA1.js"></script>
+
+
+        <script src="/js/control/jszip/dist/jszip.min.js"></script>
+        
+        <link rel="stylesheet" href="/js/control/bootstrap/4.5.2/bootstrap.min.css" />
+        <script src="/js/control/jquery/3.5.1/jquery-3.5.1.slim.min.js"></script>
+        <script src="/js/control/popper/1.16.1/popper.min.js"></script>
+        <script src="/js/control/bootstrap/4.5.2/bootstrap.min.js"></script>
+
+        <link rel="stylesheet" href="/js/control/chart.js/Chart.css" />
+        <script src="/js/control/chart.js/Chart.js"></script>
+
+        <script src="/js/control/ejs/ejs.min.js"></script>
+
+        <script>
+        var require={ paths : { vs : '/js/control/monaco/dev/vs'} };
+        </script>
+        <script src="/js/control/monaco/dev/vs/loader.js"></script>
+
+        
+
+        <title>Webshell</title>
+        <style>
+            body {
+                background-color:#555;
+            }
+        </style>
+        <script>
+            UI.init(async ()=>{
+                UI.Body.canSelect(true);
+                var schema = await UI.Body.elementPushPacketAsync(`
+					<Component id="app" src="/404.superml"></Component>
+                `);
+            });
+        </script>
+        <link rel="icon" href="favicon.png">
+        <link rel="shortcut icon" href="favicon.png">
+    </head>
+    <body>
+    </body>
+</hmtl>

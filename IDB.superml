@@ -1,0 +1,709 @@
+<script>
+    if("sp" in this.props) {
+        //alert("HAS SECURITY POINTER");
+        this.props.sp.a = 10;
+    }
+    /**
+     * Polyfill for indexedDB.databases()
+     * Safari and some other older browsers that support indexedDB do NOT
+     * Support enumerating existing databases. This is problematic when it
+     * comes time to cleanup, otherwise we could litter their device with
+     * unreferenceable database handles forcing a nuclear browser clear all history.
+     */
+
+    (function () {
+        if (window.indexedDB && typeof window.indexedDB.databases === 'undefined') {
+            const LOCALSTORAGE_CACHE_KEY = 'indexedDBDatabases';
+
+            // Store a key value map of databases
+            const getFromStorage = () =>
+                JSON.parse(window.localStorage[LOCALSTORAGE_CACHE_KEY] || '{}');
+
+            // Write the database to local storage
+            const writeToStorage = value =>
+                (window.localStorage[LOCALSTORAGE_CACHE_KEY] = JSON.stringify(value));
+
+            IDBFactory.prototype.databases = () =>
+                Promise.resolve(
+                    Object.entries(getFromStorage()).reduce((acc, [name, version]) => {
+                        acc.push({ name, version });
+                        return acc;
+                    }, [])
+                );
+
+            // Intercept the existing open handler to write our DBs names
+            // and versions to localStorage
+            const open = IDBFactory.prototype.open;
+
+            IDBFactory.prototype.open = function (...args) {
+                const dbName = args[0];
+                const version = args[1] || 1;
+                const existing = getFromStorage();
+                writeToStorage({ ...existing, [dbName]: version });
+                return open.apply(this, args);
+            };
+
+            // Intercept the existing deleteDatabase handler remove our
+            // dbNames from localStorage
+            const deleteDatabase = IDBFactory.prototype.deleteDatabase;
+
+            IDBFactory.prototype.deleteDatabase = function (...args) {
+                const dbName = args[0];
+                const existing = getFromStorage();
+                delete existing[dbName];
+                writeToStorage(existing);
+                return deleteDatabase.apply(this, args);
+            };
+        }
+    })();
+    var __open = window.indexedDB.open.bind(window.indexedDB);
+    window.indexedDB.open = null;
+    function IDB() {
+    }
+    IDB.install = async function(spec) {
+        return new Promise(async (resolve,reject)=>{
+            //console.log("install 0");
+            // check current client version installed
+            var lastSpec = spec.releases[spec.releases.length-1];
+            var lastSpecVersion = lastSpec.version;
+
+            var dblist = await window.indexedDB.databases();
+            //console.log("install 0.1");
+            //console.log( "databases", dblist );
+
+            var precheck = false;
+            for(var x = 0; x < dblist.length;x++) {
+                //console.log( `name: ${dblist[x].name} version: ${dblist[x].version}` );
+                if(spec.name == dblist[x].name && lastSpec.version == dblist[x].version) {
+                    precheck = true;
+                }
+            }
+
+            // install current server version
+
+            var request = __open(spec.name, lastSpec.version);
+            
+            //window.indexedDB.open = null; 
+            // it can always be opened by another clone server. but not in devtools. (password protect against non coders (delay)), 
+            // encryption protects against low money
+            // dynamic encryption protects against low chip makers
+            // local security protects against small mob
+            
+            request.addEventListener("error",function(event) {
+                console.log("error");
+                console.log(event.message);
+            });
+            var upgrade = false;
+            request.addEventListener("success",function(event) {
+                
+                //console.log(event);
+                var db = event.target.result;
+                //console.log(db);
+                
+                // install all seeds if was an upgrade
+                if(upgrade) {
+
+                    
+                    console.log("may already has the seeds or may be deleted? so what?");
+                    // may already has the seeds or may be deleted? so what?
+                    for(var key in lastSpec.schema) {
+                        console.log("event");
+                        console.log(`seed ${key}`,lastSpec.schema[key]._meta.seeds);
+                        if(lastSpec.schema[key]._meta.seeds) {
+                            var tx = db.transaction(key, "readwrite");
+                            var stx = tx.objectStore(key);
+                            lastSpec.schema[key]._meta.seeds.forEach((seed)=>{
+                                stx.add(seed);
+                            });
+                            tx.commit();
+                        }
+                    }
+                }
+
+                // create stores/models and export classes to handle those stores/models.
+                resolve(db);
+            });
+            request.addEventListener("blocked",function(event) {
+                console.log("Please close all other tabs with this site open!");
+            });
+            request.addEventListener("upgradeneeded",async function(event) { 
+                console.log("upgrade");
+                //console.log(event);
+                var db = event.target.result; //IDBDatabase
+                //console.log(db);
+                // find last version
+                var max = -1;
+                var speccur = -1;
+                for(var x = 0; x < dblist.length;x++) {
+                    if(spec.name == dblist[x].name && max < dblist[x].version) {
+
+                        var check = false;
+                        for(var y = 0;y < spec.releases.length;y++) {
+                            if(spec.releases[y].version == dblist[x].version) {
+                                // has version
+                                speccur = y;
+                                max = dblist[x].version;
+                                check = true;
+                                break;
+                                // else warn that user is for your own destiny.
+                            }
+                        }
+                        if(!check) {
+                            throw new Error("fatal error : can't upgrade");
+                        }
+                    }
+                }
+
+                function HandleStore(store,key) {
+                    console.log("handlestore",key);
+                    for(var x = 0; x < lastSpec.schema[key]._meta.index.length;x++) {
+                        store.createIndex(
+                            lastSpec.schema[key]._meta.index[x],
+                            lastSpec.schema[key]._meta.index[x],
+                            { 
+                                unique  : 
+                                    lastSpec.schema[key]._meta.index[x] in lastSpec.schema[key] ?
+                                    (
+                                        "unique" in lastSpec.schema[key][ lastSpec.schema[key]._meta.index[x] ] ?
+                                        (
+                                            lastSpec.schema[key][ lastSpec.schema[key]._meta.index[x] ].unique
+                                        ) : false
+                                    ) : false
+                            }
+                        );
+                    }
+                    // install seeds
+                }
+                
+                // new tables
+                for(var key in lastSpec.schema) {
+                    if( speccur == -1 || !(key in spec.releases[ speccur ].schema)) { 
+                        // if in cur spec do not have last spec key
+                        //      try to install missing indexes
+                        HandleStore(db.createObjectStore(key,{ autoIncrement : true }),key);
+                    } else {
+                        // migration code, such as add new indexes and update default values to the index if it has.
+                        //console.log("migration not specified.");
+                        
+                        //throw new Error("migration not specified.");
+                    }
+                }
+                // call a callback to migrate deleted tables
+                if(speccur!=-1) {
+                    var migrate_name = ("migrate_" + spec.releases[ speccur ].version +"_" +lastSpecVersion);
+                    if( migrate_name in lastSpec) {
+                        var type = Object.prototype.toString.apply(lastSpec[migrate_name]);
+                        if(type == "[object Boolean]" && lastSpec[migrate_name]) {
+                            // pass ok
+                        } else if(type == "[object Function]") {
+                            lastSpecVersion[migrate_name](db);
+                        } else if(type == "[object AsyncFunction]") {
+                            await lastSpecVersion[migrate_name]([db,HandleStore]);
+                        } else {
+                            request.transaction.abort();
+                            throw new Error("migration not specified : type error");
+                        }
+                    } else {
+                        request.transaction.abort();
+                        throw new Error("migration not specified : not found :" + migrate_name);
+                    }
+
+                    // deleted tables
+                    for(var key in spec.releases[ speccur ].schema) {
+                        if(!(key in lastSpec.schema)) { // deleted store (must use data before deletion)
+                            db.deleteObjectStore(key);
+                        }
+                    }
+
+                }
+
+                upgrade = true;
+            });
+            
+        });
+    }
+    IDB.service = async function(spec) {
+        
+        function genId(schema,size) {
+            if(!schema) {
+                schema = "";
+            }
+            var code = 'xxxxxxxxxxxxxxxx';
+            if(size) {
+                var sb = [];
+                for(var x = 0; x < size;x++) {
+                    sb.push("x");
+                }
+                code = sb.join("");
+            }
+            return schema+(code).replace(/[x]/g, function(c) {
+                var r = Math.random() * 16 | 0;
+                if( c == 'x' ) {
+                    return r.toString(16);
+                } else {
+                    return c;
+                }
+            });
+        }
+        var ret = {};
+        //console.log("install begin");
+        var db = await IDB.install(spec);
+        //console.log("install end");
+        //console.log("resolved",db);
+
+        ret.getTx = function(store) {
+            console.log(store);
+            var tx = db.transaction(store);
+            var obj = tx.objectStore(store);
+            
+            var id = genId("GETTX");
+            tx.oncomplete = function(event) {
+                //console.log("All done 1! (" + id + ")");
+            };
+            tx.onerror = function(event) {
+                console.log("Error1! (" + id + ") : " + event.message);
+            };
+            async function _getId (keyName,keyValue) {
+                if(keyValue) {
+                    var index = obj.index(keyName);
+                    var request = index.getKey(keyValue);
+                    return new Promise((resolve,reject)=>{
+                        request.onsuccess = function(event) {
+                            console.log(event);
+                            resolve(event.target.result);
+                        };
+                    })
+                } else {
+                    var request = obj.getKey(keyName);
+                    return new Promise((resolve,reject)=>{
+                        request.onsuccess = function(event) {
+                            resolve(event.target.result);
+                        };
+                    });
+                }
+            }
+            async function _get (keyName,keyValue) {
+                var request;
+                if(keyValue) {
+                    var index = obj.index(keyName);
+                    request = index.get(keyValue);
+                } else {
+                    request = obj.get(keyName);
+                }
+                return new Promise((resolve,reject)=>{
+                    request.onsuccess = function(event) {
+                        resolve(request.result);
+                    };
+                });
+            }
+            async function _getAll (query,count) {
+                var request;
+                if(count) {
+                    request = obj.getAll(query,count);
+                } else if(query) {
+                    request = obj.getAll(query);
+                } else {
+                    request = obj.getAll();
+                }
+                return new Promise((resolve,reject)=>{
+                    request.onsuccess = function(event) {
+                        resolve(request.result);
+                    };
+                });
+            }
+            async function _getAllIds (query,count) {
+                var request;
+                if(count) {
+                    request = obj.getAllKeys(query,count);
+                } else if(query) {
+                    request = obj.getAllKeys(query);
+                } else {
+                    request = obj.getAllKeys();
+                }
+                return new Promise((resolve,reject)=>{
+                    request.onsuccess = function(event) {
+                        resolve(request.result);
+                    };
+                });
+            }
+            async function _cursor() {
+                var request = obj.openCursor();
+                var target = {
+                    cursor : null,
+                    used : false,
+                };
+                return new Promise((resolve,reject)=>{
+                    request.onsuccess = function(e) {
+                        
+                        target.used = false;
+                        target.cursor = e.target.result;
+                        resolve(target);
+                    };
+                });
+            }
+            async function _filter(cond) {
+                var list = await _getAllIds();
+                var c = await _cursor();
+                list.sort((a,b)=>{
+                    return a > b;
+                });
+                
+                var sel = [];
+                return new Promise(async (resolve,reject)=>{
+                    async function print(i) { // loop all files
+                        var done = false;
+                        if(!c.used) {
+                            
+                            c.used = true;
+
+                            if(!c.cursor) {
+                                //console.log("no cursor");
+                                resolve(sel);
+                                return;
+                            } else if(c.cursor.key == list[i]) { // condition about key or value to filter
+                                
+                                if( cond(c.cursor.key,c.cursor.value) ) {
+                                    sel.push([c.cursor.key,c.cursor.value]);
+                                }
+                                i++;
+                                
+                                if(i < list.length) { // condition to end
+                                    try {
+                                        
+                                        c.cursor.continue();
+                                        
+                                    } catch(e) {
+                                        
+                                        tx = db.transaction(store);
+                                        
+                                        obj = tx.objectStore(store);
+                                        
+                                        
+                                        c = await _cursor();
+                                        
+                                        c.cursor.continue(list[i]);
+                                        
+                                    }
+                                    
+                                }
+                            } else {
+                                var last = c.cursor.key + 1;
+                                //console.log("unkown",list[i],c.cursor.key);
+                                
+                                tx = db.transaction(store);
+                                obj = tx.objectStore(store);
+                                
+                                c = await _cursor();
+                                c.cursor.continue(last);
+                            }
+                        } 
+                        if(i < list.length) { // condition to end
+                            setTimeout(()=>{
+                                print(i);
+                            },0);
+                        } else {
+                            resolve(sel);
+                        }
+                    }
+                    print(0);
+                });
+            }
+            return {
+                id,
+                transaction : tx,
+                objectStore : obj,
+                get : _get,
+                getId : _getId,
+                getAll : _getAll,
+                getAllIds : _getAllIds,
+                cursor : _cursor,
+                filter : _filter
+            }
+        }
+        ret.setTx = function(store,ok,err) {
+            var tx = db.transaction(store,"readwrite");
+            var obj = tx.objectStore(store);
+            var id = genId("SETTX");
+            var lock = false;
+            var lockErr = false;
+            var ret = {};
+            tx.oncomplete = function(event) {
+                if(ok && !lockErr) {
+                    //console.log("All done 2! (" + id + ")");
+                    ok();
+                }
+                if(!ok) {
+                    //console.log("All done 3! (" + id + ")");
+                }
+            };
+            tx.onerror = function(event) {
+                console.log("Error2! (" + id + ") : " + event.message);
+                lockErr = true;
+                if(err) err();
+            };
+            async function _getId (keyName,keyValue) {
+                if(!lock) {
+                    if(keyValue) {
+                        var index = obj.index(keyName);
+                        var request = index.getKey(keyValue);
+                        return new Promise((resolve,reject)=>{
+                            request.onsuccess = function(event) {
+                                resolve(event.target.result);
+                            };
+                        })
+                    } else {
+                        var request = obj.getKey(keyName);
+                        return new Promise((resolve,reject)=>{
+                            request.onsuccess = function(event) {
+                                resolve(event.target.result);
+                            };
+                        });
+                    }
+                }
+            }
+            async function _get (keyName,keyValue) {
+                if(!lock) {
+                    if(keyValue) {
+                        var index = obj.index(keyName);
+                        var request = index.get(keyValue);
+                        return new Promise((resolve,reject)=>{
+                            request.onsuccess = function(event) {
+                                resolve(request.result);
+                            };
+                        })
+                    } else {
+                        var request = obj.get(keyName);
+                        return new Promise((resolve,reject)=>{
+                            request.onsuccess = function(event) {
+                                resolve(request.result);
+                            };
+                        });
+                    }
+                }
+            }
+            async function _delete (keyName) {
+                if(!lock) {
+                    var request = obj.delete(keyName);
+                    return new Promise((resolve,reject)=>{
+                        return new Promise((resolve,reject)=>{
+                            request.onsuccess = function(event) {
+                                resolve(request.result);
+                            };
+                        });
+                    });
+                }
+            }
+            function _putAsync (value,key) {
+                if(!lock) {
+                    try {
+                        if(key) {
+                            var request = obj.put(value,key);
+                            return new Promise((resolve,reject)=>{
+                                request.onsuccess = function(event) {
+                                    console.log("SET :",value);
+                                    resolve(event.target.result);
+                                };
+                                request.onerror = function(event) {
+                                    console.log("Error set :",value);
+                                    console.log(event.message);
+                                    reject();
+                                };
+                            });
+                        } else {
+                            var request = obj.put(value);
+                            return new Promise((resolve,reject)=>{
+                                request.onsuccess = function(event) {
+                                    console.log("SET :",value);
+                                    resolve();
+                                };
+                                request.onerror = function(event) {
+                                    console.log("Error set :",value);
+                                    console.log(event.message);
+                                    reject(event.target.result);
+                                };
+                            });
+                        }
+                    } catch(e) {
+                        
+                    }
+                }
+            }
+            async function _putSync (value,key) {
+                if(!lock) {
+                    try {
+                        if(key) {
+                            var request = obj.put(value,key);
+                            var id = await new Promise((resolve,reject)=>{
+                                request.onsuccess = function(event) {
+                                    console.log("SET :",value);
+                                    resolve(event.target.result);
+                                };
+                                request.onerror = function(event) {
+                                    console.log("Error set :",value);
+                                    console.log(event.message);
+                                    reject();
+                                };
+                            });
+                            return id;
+                        } else {
+                            var request = obj.put(value);
+                            var id = await new Promise((resolve,reject)=>{
+                                request.onsuccess = function(event) {
+                                    console.log("SET :" ,value);
+                                    resolve(event.target.result);
+                                };
+                                request.onerror = function(event) {
+                                    console.log("Error set :",value);
+                                    console.log(event.message);
+                                    reject();
+                                };
+                            });
+                            return id;
+                            
+                        }
+                    } catch(e) {
+                        
+                        lock = true;
+                        
+                    }
+                }
+            }
+            async function _cursor() {
+                var request = obj.openCursor();
+                return new Promise((resolve,reject)=>{
+                    request.onsuccess = function(e) {
+                        resolve(e.target.result);
+                    }
+                });
+            }
+            function _commit() {
+                lock = true;
+                tx.commit();
+            }
+            function _cancel() {
+                lock = true;
+                tx.abort();
+            }
+            ret.id = id;
+            ret.transaction = tx;
+            ret.objectStore = obj;
+            ret.get = _get;
+            ret.getId = _getId;
+            ret.putAsync = _putAsync;
+            ret.putSync = _putSync;
+            ret.delete = _delete;
+            ret.commit = _commit;
+            ret.cancel = _cancel;
+            ret.cursor = _cursor;
+            return ret;
+        }
+        function setModel(container,table,schema) {
+            container[table] = {
+                add : async function(value) {
+                    var _id = null;
+                    return await new Promise(async (resolve,reject)=>{
+                        var b = ret.setTx(table,()=>{ resolve(_id); },()=>{ reject("CANT ADD ",value); });
+                        _id = await b.putSync(value);
+                        b.commit();
+                    });
+                },
+                update : async function(id,value) {
+                    return await new Promise(async (resolve,reject) => {
+                        var b = ret.setTx(table,()=>{
+                            resolve();
+                        },()=>{ 
+                            reject("CANT ADD",value); 
+                        });
+                        await b.putAsync(value,id);
+                        b.commit();
+                    });
+                },
+                findId : async function(index,value) {
+                    return await new Promise(async (resolve,reject)=>{
+                        if(value) {
+                            var val = await ret.getTx(table).getId(index,value);
+                            resolve(val);
+                        } else {
+                            var val = await ret.getTx(table).getId(index);
+                            resolve(val);
+                        }
+                    });
+                },
+                find : async function(index,value) {
+                    
+                    return await new Promise(async (resolve,reject)=>{
+                        if(value) {
+                            //console.log("@6",value);
+                            var val = await ret.getTx(table).get(index,value);
+                            resolve(val);
+                        } else {
+                            //console.log("@6",index);
+                            var val = await ret.getTx(table).get(index);
+                            resolve(val);
+                        }
+                    });
+                },
+                findAll : async function(query,count) {
+                    return await new Promise(async (resolve,reject)=>{
+                        if(count) {
+                            var val = await ret.getTx(table).getAll(query,count);
+                            resolve(val);
+                        } else if(query) {
+                            var val = await ret.getTx(table).getAll(query);
+                            resolve(val);
+                        } else {
+                            var val = await ret.getTx(table).getAll();
+                            resolve(val);
+                        }
+                    });
+                },
+                findAllIds : async function(query,count) {
+                    return await new Promise(async (resolve,reject)=>{
+                        if(count) {
+                            var val = await ret.getTx(table).getAllIds(query,count);
+                            resolve(val);
+                        } else if(query) {
+                            var val = await ret.getTx(table).getAllIds(query);
+                            resolve(val);
+                        } else {
+                            var val = await ret.getTx(table).getAllIds();
+                            resolve(val);
+                        }
+                    });
+                },
+                read_cursor : async function() {
+                    return await new Promise(async (resolve,reject)=>{
+                        var val = await ret.getTx(table).cursor();
+                        resolve(val);
+                    });
+                },
+                write_cursor : async function() {
+                    return await new Promise(async (resolve,reject)=>{
+                        var val = await ret.setTx(table).cursor();
+                        resolve(val);
+                    });
+                },
+                filter : async function(cond) {
+                    return await new Promise(async (resolve,reject)=>{
+                        var val = await ret.getTx(table).filter(cond);
+                        resolve(val);
+                    });
+                },
+                delete : async function(id) {
+                    return await new Promise(async (resolve,reject)=>{
+                        var c = ret.setTx(table,()=>{ resolve(); },()=>{ reject(); });
+                        await c.delete(id);
+                        c.commit();
+                    });
+                }
+            }
+        }
+        var lastSpec = spec.releases[spec.releases.length-1];
+        for(var table in lastSpec.schema) {
+            setModel(ret,table,lastSpec.schema);
+        }
+        return ret;
+    }
+
+    this.module.exports = IDB;
+</script>
